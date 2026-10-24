@@ -4,12 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>YERALTI - Derinlere Kaz</title>
-  <meta name="description" content="YERALTI: derinlere kaz, cevher bul, boyutlara git, bossları yen! Tarayıcıda ücretsiz oynanan kazı oyunu. Yeni: YERALTI 3B.">
+  <meta name="description" content="YERALTI: derinlere kaz, cevher bul, boyutlara git, bossları yen! Tarayıcıda ve telefonda ücretsiz oynanan 3B kazı oyunu.">
   <meta name="keywords" content="yeraltı, yeralti, derinlere kaz, kazı oyunu, maden oyunu, tarayıcı oyunu, ücretsiz oyun">
   <style>
     html, body { margin: 0; height: 100%; background: #111; display: grid; place-items: center; overflow: hidden; }
+    /* telefonda adres çubuğu ekranın bir kısmını kaplar: oyun gerçekten görünen alana (dvh) sığdırılır */
+    html, body { height: 100dvh; }
     canvas {
       width: min(100vw, calc(100vh * 16 / 9));
+      width: min(100vw, calc(100dvh * 16 / 9));
+      max-height: 100dvh;
       aspect-ratio: 16 / 9;
       background: #000;
       display: block;
@@ -21,6 +25,16 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <script>
+    // telefonda ilk dokunuşta tam ekran ve yatay: adres çubuğu kaybolur, oyun bütün ekranı kaplar
+    addEventListener('touchend', function tam() {
+      const el = document.documentElement;
+      if (document.fullscreenElement || !el.requestFullscreen) return;
+      el.requestFullscreen({ navigationUI: 'hide' }).then(() => {
+        if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+      }).catch(() => {});
+    }, { passive: true });
+  </script>
   <script src="sinema/liste.js"></script>
   <script src="oyun.js"></script>
 </body>
