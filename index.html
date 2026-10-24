@@ -26,6 +26,22 @@
 <body>
   <canvas id="game"></canvas>
   <script>
+    // oyun, ekranın gerçekten görünen kısmına sığdırılır (telefonda adres çubuğu ve ekran dönünce de)
+    function sigdir() {
+      const vv = window.visualViewport;
+      const w = vv ? vv.width : innerWidth, h = vv ? vv.height : innerHeight;
+      const s = Math.min(w, h * 16 / 9);
+      document.body.style.height = document.documentElement.style.height = h + 'px';
+      const c = document.getElementById('game');
+      c.style.width = Math.floor(s) + 'px';
+      c.style.height = Math.floor(s * 9 / 16) + 'px';
+    }
+    sigdir();
+    addEventListener('resize', sigdir);
+    addEventListener('orientationchange', () => setTimeout(sigdir, 300));
+    if (window.visualViewport) visualViewport.addEventListener('resize', sigdir);
+  </script>
+  <script>
     // telefonda ilk dokunuşta tam ekran ve yatay: adres çubuğu kaybolur, oyun bütün ekranı kaplar
     addEventListener('touchend', function tam() {
       const el = document.documentElement;

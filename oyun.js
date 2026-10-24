@@ -11506,6 +11506,11 @@ function drawCinema() {
   const now = cinema.seated && reel ? `${cinema.i % reels.length + 1}/${reels.length} · ${reel.title}` : 'SİNEMA';
   text(fitText(`${now}  ·  E: ${cinema.seated ? 'kalk' : 'koltuğa otur'} · U: sonraki fragman · ESC: çık`, '12px system-ui, sans-serif', VIEW_W - 40), VIEW_W / 2, VIEW_H - 16, '12px system-ui, sans-serif', '#ddd', 'center');
   uiButton(VIEW_W - 44, 10, 30, 28, 'X', () => { leaveCinema(); overlay = 'city3d'; }, { bg: '#c0392b' });
+  // dokunulabilen düğmeler (telefonda klavye yok): E otur/kalk, U sonraki fragman
+  uiButton(VIEW_W - 150, 404, 136, 44, cinema.seated ? 'E · KALK' : 'E · OTUR', () => pressed.add('KeyE'),
+    { bg: '#2e7d32', border: '#ffd54f', font: 'bold 15px system-ui, sans-serif' });
+  uiButton(VIEW_W - 150, 456, 136, 44, 'U · SONRAKİ', () => pressed.add('KeyU'),
+    { bg: cinema.seated ? '#6a1b9a' : '#424242', border: '#ffd54f', font: 'bold 15px system-ui, sans-serif' });
 }
 
 // ===================== 3B şehir =====================
@@ -16764,13 +16769,49 @@ function hotbarIcon(id, x, y) {
   }
 }
 
+// envanter çubuğu: soldaki 🎒 düğmesiyle kapatılıp açılır (seçim hatırlanır).
+// Telefonda kutular büyüktür; hepsi sığmadığı için ◀ ▶ ile sayfa değiştirilir.
+const INV_BAR_KEY = 'derinlere-kaz-envanter';
+let invBarOpen = (() => { try { return localStorage.getItem(INV_BAR_KEY) !== '0'; } catch (e) { return true; } })();
+function toggleInvBar() {
+  invBarOpen = !invBarOpen;
+  try { localStorage.setItem(INV_BAR_KEY, invBarOpen ? '1' : '0'); } catch (e) { /* sadece bu oturum */ }
+  beep(invBarOpen ? 620 : 420, 0.05, 'triangle', 0.04);
+}
+let hotbarPage = 0, hotbarPageSel = -1;
 function drawHotbar(withHelp = true) {
-  // kutu boyu eşya sayısına göre küçülür, çubuk ekrana sığar; tuş yardımı kapalıyken en altta durur
-  const gap = 3, size = Math.min(42, Math.floor((VIEW_W - 20) / HOTBAR.length) - gap);
-  const total = HOTBAR.length * (size + gap) - gap;
-  const x0 = (VIEW_W - total) / 2, y0 = VIEW_H - (withHelp ? 46 : 0) - size - 8;
-  HOTBAR.forEach((s, i) => {
-    const x = x0 + i * (size + gap);
+  const phone = isPhone(), gap = 3, bottom = VIEW_H - (withHelp ? 46 : 0) - 8;
+  const tw = phone ? 46 : 34; // 🎒 düğmesinin genişliği
+  if (!invBarOpen) {
+    uiButton(10, bottom - 34, phone ? 150 : 124, 34, '🎒 ENVANTERİ AÇ', toggleInvBar,
+      { bg: 'rgba(0,0,0,0.65)', border: '#ffd54f', font: `bold ${phone ? 14 : 12}px system-ui, sans-serif` });
+    return;
+  }
+  const avail = VIEW_W - 20 - tw - 8;
+  let size, first = 0, count = HOTBAR.length, arrow = 0;
+  if (phone) {
+    size = 46; arrow = 30;
+    const per = Math.floor((avail - 2 * (arrow + 4) + gap) / (size + gap));
+    const pages = Math.ceil(HOTBAR.length / per);
+    if (hotbarSel !== hotbarPageSel) { hotbarPage = Math.floor(hotbarSel / per); hotbarPageSel = hotbarSel; } // seçilen kutunun sayfası
+    hotbarPage = Math.max(0, Math.min(pages - 1, hotbarPage));
+    first = hotbarPage * per; count = Math.min(per, HOTBAR.length - first);
+    if (pages === 1) arrow = 0;
+  } else size = Math.min(42, Math.floor(avail / HOTBAR.length) - gap);
+  const y0 = bottom - size;
+  const total = count * (size + gap) - gap + (arrow ? 2 * (arrow + 4) : 0);
+  const left = 10 + tw + 8, x0 = left + Math.max(0, (avail - total) / 2) + (arrow ? arrow + 4 : 0);
+  // kapatma düğmesi
+  uiButton(10, y0, tw, size, '🎒', toggleInvBar, { bg: 'rgba(0,0,0,0.65)', border: '#ffd54f', font: `${phone ? 22 : 16}px system-ui, sans-serif` });
+  text('✕', 10 + tw - 6, y0 + 12, 'bold 10px system-ui, sans-serif', '#ff8a80', 'right');
+  if (arrow) {
+    uiButton(x0 - arrow - 4, y0, arrow, size, '◀', () => { hotbarPage--; }, { bg: hotbarPage > 0 ? '#5d4037' : '#333', font: 'bold 16px system-ui, sans-serif' });
+    uiButton(x0 + count * (size + gap) - gap + 4, y0, arrow, size, '▶', () => { hotbarPage++; },
+      { bg: first + count < HOTBAR.length ? '#5d4037' : '#333', font: 'bold 16px system-ui, sans-serif' });
+  }
+  for (let k = 0; k < count; k++) {
+    const i = first + k, s = HOTBAR[i];
+    const x = x0 + k * (size + gap);
     const sel = i === hotbarSel;
     ctx.fillStyle = sel ? 'rgba(255,213,79,0.3)' : 'rgba(0,0,0,0.6)';
     roundRect(x, y0, size, size, 6);
@@ -16778,13 +16819,17 @@ function drawHotbar(withHelp = true) {
     ctx.strokeStyle = sel ? '#ffd54f' : 'rgba(255,255,255,0.25)';
     ctx.lineWidth = sel ? 3 : 1;
     ctx.stroke();
-    hotbarIcon(s.id, x + size / 2, y0 + size / 2 - 2);
-    text(i < 10 ? `${(i + 1) % 10}` : '-', x + 4, y0 + 12, 'bold 10px system-ui, sans-serif', '#ccc');
+    if (phone) { // büyük kutuda simge de büyük
+      ctx.save(); ctx.translate(x + size / 2, y0 + size / 2 - 3); ctx.scale(1.5, 1.5);
+      hotbarIcon(s.id, 0, 0);
+      ctx.restore();
+    } else hotbarIcon(s.id, x + size / 2, y0 + size / 2 - 2);
+    if (!phone) text(i < 10 ? `${(i + 1) % 10}` : '-', x + 4, y0 + 12, 'bold 10px system-ui, sans-serif', '#ccc');
     const cnt = hotbarCount(s.id);
-    if (cnt) text(cnt, x + size - 4, y0 + size - 5, 'bold 11px system-ui, sans-serif', '#fff', 'right');
+    if (cnt) text(cnt, x + size - 4, y0 + size - 5, `bold ${phone ? 13 : 11}px system-ui, sans-serif`, '#fff', 'right');
     if (state === 'playing') button(x, y0, size, size, () => { hotbarSel = i; });
-  });
-  text(HOTBAR[hotbarSel].name, VIEW_W / 2, y0 - 6, 'bold 13px system-ui, sans-serif', '#ffd54f', 'center');
+  }
+  text(HOTBAR[hotbarSel].name, VIEW_W / 2, y0 - 6, `bold ${phone ? 15 : 13}px system-ui, sans-serif`, '#ffd54f', 'center');
 }
 
 function drawAchievements() {
