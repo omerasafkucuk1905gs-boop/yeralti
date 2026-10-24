@@ -117,6 +117,8 @@ const T = {
   // Boyut Pusulası'yla gidilen boyutların cevherleri (sadece Hava Kontrol Makinesi'nde birleşir),
   // Atlantis mermeri ve Titanik'in batık hazine sandığı
   ORICHALCUM: 94, MIRROR_ORE: 95, DREAM_ORE: 96, PEARL: 97, MARBLE: 98, WRECK_CHEST: 99,
+  MOON_ORE: 100,                      // Ay Taşı: sadece gerçek dolunay gecelerinde çıkar, sabah kaybolur
+  CHESS_W: 101, CHESS_B: 102, IVORY: 103, // Satranç Boyutu: tahtanın beyaz ve siyah kareleri, cevheri Fildişi
 };
 
 // Güneş sistemi: her gezegenin kendine özel madeni var. Bir gezegenin madenini kırmak
@@ -178,7 +180,7 @@ const KEEP_ON_REGEN = new Set([T.LADDER, T.SHAFT, T.PORTAL, T.END_PORTAL, T.PURP
 const NON_SOLID = new Set([T.AIR, T.LADDER, T.BED, T.WATER, T.LAVA, T.CORAL, T.CROP, T.LEVER, T.LEVER_ON, T.CAMPFIRE, T.TENT,
   T.CANDYCANE, T.TIMEMACHINE, T.FERN, T.RAIL, T.STATION, T.HST, T.CREDITS, T.GLYPH]);
 // Gökyüzü olan boyutlar (yukarısı açık hava)
-function skyDim(d) { return d === 'over' || isPlanet(d) || d === 'cloud' || d === 'candy' || d === 'past' || d === 'capital' || d === 'blackhole' || d === 'mirror' || d === 'dream' || NEW_ERA_DIMS.includes(d); }
+function skyDim(d) { return d === 'over' || isPlanet(d) || d === 'cloud' || d === 'candy' || d === 'past' || d === 'capital' || d === 'blackhole' || d === 'mirror' || d === 'dream' || d === 'chess' || NEW_ERA_DIMS.includes(d); }
 const OCEAN_DEPTH = 10;             // okyanus kaç blok derin
 const CROP_STAGE_TIME = 40;         // buğday her aşamada kaç sn büyür (yağmurda 2 kat hızlı)
 
@@ -229,10 +231,12 @@ const ORES = {
   [T.DREAM_ORE]: { key: 'dreamShard', name: 'Rüya Kristali', price: 0, color: '#f48fb1' },
   [T.PEARL]: { key: 'pearl', name: 'Mariana İncisi', price: 0, color: '#fffde7' },
   [T.MARBLE]: { key: 'marble', name: 'Atlantis Mermeri', price: 0, color: '#e0f2f1', noDye: true },
+  [T.MOON_ORE]: { key: 'moonstone', name: 'Ay Taşı', price: 150, color: '#b3e5fc' },
+  [T.IVORY]: { key: 'ivory', name: 'Fildişi', price: 45, color: '#fff3d6' },
 };
 const ORE_BY_KEY = {};
 for (const t in ORES) ORE_BY_KEY[ORES[t].key] = ORES[t];
-const ORE_LIST = [T.EMERALD, T.GOLD, T.DIAMOND, T.DRAGONSTONE, T.PRISMARINE, T.AMBER, T.MAGNET_N];   // Tüccar'a satılabilenler (Manyetit bir kez sayılır)
+const ORE_LIST = [T.EMERALD, T.GOLD, T.DIAMOND, T.DRAGONSTONE, T.PRISMARINE, T.AMBER, T.MAGNET_N, T.MOON_ORE, T.IVORY];   // Tüccar'a satılabilenler (Manyetit bir kez sayılır)
 const INV_ORDER = ['emerald', 'gold', 'diamond', 'iron', 'gravel', 'obsidian', 'lapis', 'amethyst',
   'white', 'whiteBar', 'karatas', 'whiteEnd', 'endBlack', 'purpleEnd', 'firework', 'chest', 'wool', 'bed',
   'tnt', 'eggLava', 'eggEnder', 'eggCrystal', 'redstone', 'rocket', 'oxygen', ...PLANET_KEYS,
@@ -242,7 +246,7 @@ const INV_ORDER = ['emerald', 'gold', 'diamond', 'iron', 'gravel', 'obsidian', '
   'sandstone', 'knightWood', 'knightHelm', 'carPart', 'knightSword', 'sandDiamond',
   'fosBone', 'fosAmmonite', 'fosTooth', 'fosSkull', 'antCoin', 'antVase', 'antTablet', 'antMask',
   'flower', 'shell', 'leaf', 'snowCrystal', 'bhOre', 'bhPotion', 'simit', 'robotChip', 'magnetite', 'ironBlock',
-  'orichalcum', 'mirrorShard', 'dreamShard', 'pearl', 'marble'];
+  'orichalcum', 'mirrorShard', 'dreamShard', 'pearl', 'marble', 'moonstone', 'ivory'];
 // Fosiller ve antik eşyalar (fırçayla kazılır), mevsim eşyaları (yüzeyde toplanır): müzede sergilenir
 const FOSSIL_KEYS = ['fosBone', 'fosAmmonite', 'fosTooth', 'fosSkull'];
 const ANCIENT_KEYS = ['antCoin', 'antVase', 'antTablet', 'antMask'];
@@ -307,6 +311,8 @@ const ITEM_INFO = {
   magnetite: 'Mıknatıs Boyutu · satılır 30 TL', ironBlock: '8 tane: Mıknatıs portalı (2 yan + üst), çakmakla yak',
   orichalcum: 'Atlantis · Hava Kontrol Makinesi', mirrorShard: 'Ayna Boyutu · Hava Kontrol Makinesi',
   dreamShard: 'Rüya Boyutu · Hava Kontrol Makinesi', pearl: 'Mariana Çukuru · Hava Kontrol Makinesi', marble: 'Atlantis\'in yapı taşı',
+  moonstone: 'Sadece gerçek dolunay gecesi · satılır 150 TL',
+  ivory: 'Satranç Boyutu · satılır 45 TL',
 };
 for (const k of [...FOSSIL_KEYS, ...ANCIENT_KEYS]) ITEM_INFO[k] = 'Müzede sergile';
 for (const k of PLANET_KEYS) ITEM_INFO[k] = PLANETS[k].noTier ? 'Uzaylı tüccara sat' : `${PLANETS[k].name} eşyaları`;
@@ -592,6 +598,7 @@ const HARDNESS = {
   [T.PLANET_STONE]: 4, [T.BASALT]: 5, [T.SHIPWOOD]: 2, [T.TREASURE]: 2, [T.CRACKED]: 3,
   [T.PUMPKIN]: 1, [T.GIFT]: 1, [T.BH_ORE]: 14, [T.MAGNET_N]: 6, [T.MAGNET_S]: 6, [T.IRON_BLOCK]: 3,
   [T.ORICHALCUM]: 8, [T.MIRROR_ORE]: 8, [T.DREAM_ORE]: 6, [T.PEARL]: 8, [T.MARBLE]: 5, [T.WRECK_CHEST]: 2,
+  [T.MOON_ORE]: 4, [T.CHESS_W]: 3, [T.CHESS_B]: 3, [T.IVORY]: 6,
   [T.FOSSIL]: 4, [T.URN]: 1, [T.RUIN]: 6, [T.TPSTONE]: 3, [T.SEASON_ITEM]: 1, [T.AQUARIUM]: 2,
   [T.KNIGHT_TREE]: 6, [T.DESERT_CHEST]: 3, [T.SANDSTONE]: 3, [T.KNIGHT_WOOD]: 3, [T.CAR_PART]: 3,
   [T.CLOUD]: 1, [T.CHOCOLATE]: 2, [T.FROSTING]: 1, [T.CANDY_ORE]: 2, [T.LOLLIPOP]: 1,
@@ -753,9 +760,10 @@ DIMS.atlantis = { name: 'Atlantis', rows: DIM_ROWS, base: '#4db6ac', dark: '#008
 DIMS.mirror = { name: 'Ayna Boyutu', rows: DIM_ROWS, base: '#b0bec5', dark: '#90a4ae', wall: '#37474f', bg: '#e1f5fe', tint: '10,10,30', fill: T.STONE, label: '#e0f7fa' };
 DIMS.dream = { name: 'Rüya Boyutu', rows: DIM_ROWS, base: '#ce93d8', dark: '#ab47bc', wall: '#4a148c', bg: '#f3e5f5', tint: '20,0,30', fill: T.DIRT, label: '#f8bbd0' };
 DIMS.mariana = { name: 'Mariana Çukuru', rows: 150, base: '#455a64', dark: '#37474f', wall: '#0b1a26', bg: '#01131f', tint: '0,8,20', fill: T.BASALT, label: '#4fc3f7' };
-const COMPASS_DIMS = ['atlantis', 'mirror', 'dream', 'mariana'];
+DIMS.chess = { name: 'Satranç Boyutu', rows: DIM_ROWS, base: '#8d8d8d', dark: '#6e6e6e', wall: '#26262b', bg: '#37474f', tint: '5,5,15', fill: T.STONE, label: '#ffffff' };
+const COMPASS_DIMS = ['atlantis', 'mirror', 'dream', 'mariana', 'chess'];
 const WATER_DIMS = ['water', 'atlantis', 'mariana'];
-const DIM_KEYS = ['over', 'nether', 'end', 'purple', 'water', ...PLANET_KEYS, 'cloud', 'candy', 'past', 'capital', ...NEW_ERA_DIMS, 'blackhole', 'atlantis', 'mirror', 'mariana'];
+const DIM_KEYS = ['over', 'nether', 'end', 'purple', 'water', ...PLANET_KEYS, 'cloud', 'candy', 'past', 'capital', ...NEW_ERA_DIMS, 'blackhole', 'atlantis', 'mirror', 'mariana', 'chess'];
 
 // Portallar: "a" ucu from boyutunda, "b" ucu to boyutunda
 const PORTALS = {
@@ -819,6 +827,10 @@ MOBS.mariana = { name: 'Fener Balığı', hp: 60, dmg: 12, speed: 85, reward: 30
 BOSSES.atlantis = { name: 'Poseidon', hp: 2000, dmg: 30, color: '#26c6da', dark: '#00838f', eye: '#ffeb3b', shot: '#ffd54f', drop: { key: 'orichalcum', n: 15 }, reward: 5000 };
 BOSSES.mirror = { name: 'Senin Kopyan', hp: 1500, dmg: 26, color: '#90caf9', dark: '#546e7a', eye: '#000000', shot: '#e0f7fa', drop: { key: 'mirrorShard', n: 15 }, reward: 4000 };
 BOSSES.mariana = { name: 'Derinlerin Kralı', hp: 2400, dmg: 32, color: '#7b1fa2', dark: '#4a148c', eye: '#ffeb3b', shot: '#b388ff', drop: { key: 'pearl', n: 15 }, reward: 6000 };
+// Satranç Boyutu: siyah piyonlar asker gibi yürür, siyah atlar L çizerek zıplar; sağ uçta Siyah Şah
+MOBS.chess = { name: 'Piyon Asker', hp: 60, dmg: 11, speed: 65, reward: 28, max: 4, pawn: true, w: 20, h: 30, shirt: '#212121', legs: '#212121', skin: '#212121', eye: '#ff5252' };
+MOBS.chessKnight = { name: 'Siyah At', hp: 85, dmg: 15, speed: 0, reward: 40, max: 2, chessKnight: true, w: 24, h: 34, shirt: '#212121', legs: '#212121', skin: '#212121', eye: '#ffd54f' };
+BOSSES.chess = { name: 'Siyah Şah', hp: 1800, dmg: 28, color: '#212121', dark: '#000000', eye: '#ffd54f', shot: '#9e9e9e', drop: { key: 'ivory', n: 20 }, reward: 4500, ground: true };
 // komşu ülkenin askerleri (savaşta sınırdan gelir)
 MOBS.soldier = { name: 'Düşman Asker', hp: 60, dmg: 9, speed: 80, reward: 30, max: 0, soldier: true, shirt: '#556b2f', legs: '#3b4a1f', skin: '#f1c27d', eye: '#000000' };
 // Mıknatıs Boyutu: paslı golemler, sağ uçta Demir Dev (yerde yürür, arada bir seni kendine çeker)
@@ -873,7 +885,7 @@ const HOTBAR = [
   { id: 'f16', name: 'F-16 (sağ tık: bin · R: radar ve füze)' },
   { id: 'ironBlock', name: 'Demir Blok (sağ tık: koy · Mıknatıs portalı)' },
   { id: 'bombCar', name: 'Bomba Atış Arabası (sağ tık: bin · sol tık: bomba at)' },
-  { id: 'dimCompass', name: 'Boyut Pusulası (sağ tık: Atlantis, Ayna, Rüya, Mariana)' },
+  { id: 'dimCompass', name: 'Boyut Pusulası (sağ tık: Atlantis, Ayna, Rüya, Mariana, Satranç)' },
   { id: 'weatherMachine', name: 'Hava Kontrol Makinesi (sağ tık: yağmur, kar, fırtına, şimşek)' },
 ];
 
@@ -1936,6 +1948,7 @@ function generateDimRaw(d) {
   if (d === 'magnet') return generateMagnet();
   if (d === 'atlantis') return generateAtlantis();
   if (d === 'mirror') return generateMirror();
+  if (d === 'chess') return generateChess();
   if (d === 'dream') return generateDream();
   if (d === 'mariana') return generateMariana();
   if (d === 'capital') return generateCapital();
@@ -2599,6 +2612,7 @@ function drawMenuButtons() {
   // 3B görünüm: bloklar derinlikli küp olarak çizilir (oyun aynı)
   uiButton(cx - 120, y + 48, 240, 30, view3d ? '🧊 3B GÖRÜNÜM: AÇIK' : '🧊 3B GÖRÜNÜM: KAPALI', () => setView3d(!view3d), { bg: view3d ? '#6a1b9a' : '#455a64', border: '#ffd54f', font: 'bold 14px system-ui, sans-serif' });
   text(`Oyuncu: ${profile.name || '-'} · ${isPhone() ? '📱 Telefon' : '💻 PC'}`, cx + 136, y + 68, 'bold 13px system-ui, sans-serif', '#ffd54f');
+  drawPlayerCount(VIEW_W - 10, 24, 'right'); // menüde sağ üst köşe
 }
 
 // ===================== Arkadaşlar: isimle davet =====================
@@ -2775,7 +2789,7 @@ function feetRow() { return Math.floor((player.y + player.h - 1) / TILE); }
 // bulut adalarında "yer altı" yok: yüzey satırı haritanın altında sayılır
 function surfaceRow() {
   if (dim === 'over') return SURFACE;
-  if (isPlanet(dim) || dim === 'candy' || dim === 'past' || dim === 'blackhole' || dim === 'mirror' || NEW_ERA_DIMS.includes(dim)) return PLANET_SURFACE;
+  if (isPlanet(dim) || dim === 'candy' || dim === 'past' || dim === 'blackhole' || dim === 'mirror' || dim === 'chess' || NEW_ERA_DIMS.includes(dim)) return PLANET_SURFACE;
   if (dim === 'capital') return CAP_SURFACE;
   return dim === 'cloud' || dim === 'dream' ? DIM_ROWS : -1;
 }
@@ -3209,6 +3223,10 @@ function breakTile(c, r, t) {
   // şanslı kazma yeteneği: bazen 2 maden çıkar
   const count = Math.random() < luckChance() ? 2 : 1;
   game.inv[ore.key] += count;
+  if (t === T.MOON_ORE) { // Rekorlar Kitabı: en çok Ay Taşı
+    game.stats.moonstones = (game.stats.moonstones || 0) + count;
+    if (game.stats.moonstones === count) snapPhoto('İlk Ay Taşım!');
+  }
   if (ore.key === 'diamond') {
     say('diamond');
     if (!game.stats.diamonds) snapPhoto('İlk elmasım!');
@@ -3339,7 +3357,7 @@ function makeZombie(c, r) {
   // gezegenlerde bazen uçan Uzay Böceği çıkar
   // gezegenlerde bazen Uzay Böceği, Şövalyeler Çağı'nda bazen yavru ejderha
   const kind = isPlanet(dim) && Math.random() < 0.4 ? UFO_MOB : dim === 'knight' && Math.random() < 0.35 ? 'dragonling'
-    : dim === 'blackhole' && Math.random() < 0.4 ? 'voidling' : dim;
+    : dim === 'blackhole' && Math.random() < 0.4 ? 'voidling' : dim === 'chess' && Math.random() < 0.4 ? 'chessKnight' : dim;
   const m = MOBS[kind];
   const w = m.w || 20, h = m.h || 28;
   return {
@@ -3409,6 +3427,18 @@ function updateZombies(dt) {
     if (dir) z.facing = dir;
     z.kb -= Math.sign(z.kb) * Math.min(Math.abs(z.kb), 900 * dt);
     z.vx = dir * speed + z.kb;
+    if (MOBS[z.kind].chessKnight) { // satranç atı: yürümez, L çizerek zıplar (2 yukarı, 1-2 yana)
+      z.leapT = (z.leapT === undefined ? 1 : z.leapT) - dt;
+      if (z.onGround) {
+        z.leapVx = 0;
+        if (z.leapT <= 0 && Math.abs(dx) < 16 * TILE) {
+          const d = Math.sign(dx) || 1;
+          z.leapT = 1.3 + Math.random() * 0.7; z.facing = d;
+          z.vy = -560; z.leapVx = d * (100 + Math.random() * 60);
+        }
+      }
+      z.vx = (z.onGround ? 0 : z.leapVx || 0) + z.kb;
+    }
     z.vy = Math.min(z.vy + GRAVITY * gravityNow() * dt, MAX_FALL);
 
     z.x += z.vx * dt;
@@ -3718,6 +3748,8 @@ function nightFactor() {
 }
 
 function updateDay(dt) {
+  if (game.moonClear && dim === 'over') clearMoonOres(); // sabah başka diyardaydın: Ay Taşları şimdi kaybolur
+  recordsTick();
   const wasNight = isNight();
   game.dayTime += dt;
   if (game.dayTime >= DAY_LENGTH) {
@@ -3733,6 +3765,7 @@ function updateDay(dt) {
 function morning() {
   game.dayTime = 0;
   game.fullMoon = false;
+  clearMoonOres(); // Ay Taşları sabah kaybolur
   if (game.meteorNight) { // meteor gecesinin sabahı yıldız kayar
     game.meteorNight = false;
     meteors = [];
@@ -3850,13 +3883,175 @@ let meteorTimer = 3;
 let star = null;                    // sabah kayan yıldız: { t }
 const STAR_TIME = 2.2;
 
+// ===================== Gerçek Ay =====================
+// Oyundaki ay, gerçek ayın bugünkü evresine göre çizilir. Gerçek dolunay günlerinde (ay %97'den fazla dolu)
+// oyunun geceleri dolunay olur: madende daha hızlı kazılır ve sadece o gece çıkan AY TAŞI belirir.
+const MOON_SYNODIC = 29.530588853;                      // iki yeni ay arası (gün)
+const MOON_REF = Date.UTC(2000, 0, 6, 18, 14);          // bilinen bir yeni ay
+const MOON_ORE_COUNT = 14;
+function realMoon(now = Date.now()) {
+  const age = (((now - MOON_REF) / 86400000) % MOON_SYNODIC + MOON_SYNODIC) % MOON_SYNODIC;
+  const p = age / MOON_SYNODIC, illum = (1 - Math.cos(2 * Math.PI * p)) / 2;
+  const names = ['Yeni Ay', 'Hilal', 'İlk Dördün', 'Şişkin Ay', 'Dolunay', 'Şişkin Ay', 'Son Dördün', 'Hilal'];
+  return { age, p, illum, waxing: p < 0.5, name: names[Math.round(p * 8) % 8], full: illum >= 0.97 };
+}
+// ayın evresi: aydınlık yarım daire + gölge sınırı (elips)
+function drawMoonPhase(mx, my, r, a) {
+  const m = realMoon(), k = Math.cos(2 * Math.PI * m.p); // 1: yeni ay, -1: dolunay
+  ctx.fillStyle = `rgba(90,96,130,${a * 0.45})`; ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.fill(); // karanlık kısım
+  ctx.fillStyle = `rgba(255,249,196,${a})`;
+  ctx.beginPath();
+  if (m.waxing) ctx.arc(mx, my, r, -Math.PI / 2, Math.PI / 2, false); // büyüyen ay: sağı aydınlık
+  else ctx.arc(mx, my, r, -Math.PI / 2, Math.PI / 2, true);          // küçülen ay: solu aydınlık
+  const termRight = m.waxing ? k > 0 : k < 0; // gölge sınırı sağdan mı geçer
+  if (termRight) ctx.ellipse(mx, my, Math.abs(k) * r, r, 0, Math.PI / 2, -Math.PI / 2, true);
+  else ctx.ellipse(mx, my, Math.abs(k) * r, r, 0, Math.PI / 2, Math.PI * 3 / 2, false);
+  ctx.fill();
+  if (m.illum > 0.6) { // kraterler
+    ctx.fillStyle = `rgba(224,215,160,${a * 0.8 * (m.illum - 0.5) * 2})`;
+    for (const [ox, oy, rr] of [[-0.37, -0.2, 0.2], [0.3, 0.26, 0.16], [0.15, -0.42, 0.1]]) { ctx.beginPath(); ctx.arc(mx + ox * r, my + oy * r, rr * r, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+// dolunay gecesi: Dünya'nın madeninde, oyuncunun yakınında Ay Taşları belirir
+function spawnMoonOres() {
+  game.moonOres = [];
+  if (dim !== 'over') return;
+  const cx = centerCol();
+  for (let k = 0; k < 600 && game.moonOres.length < MOON_ORE_COUNT; k++) {
+    const c = Math.max(VILLAGE_WIDTH + 2, Math.min(BORDER_COL - 3, cx + Math.floor((Math.random() - 0.5) * 140)));
+    const r = SURFACE + 2 + Math.floor(Math.random() * 35);
+    const t = getTile(c, r);
+    if (t !== T.STONE && t !== T.DIRT && t !== T.DEEP) continue;
+    setTile(c, r, T.MOON_ORE);
+    game.moonOres.push([c, r, t]);
+  }
+}
+// sabah: kazılmamış Ay Taşları eski taşına döner (Dünya'da değilsen Dünya'ya dönünce)
+function clearMoonOres() {
+  if (!game.moonOres || !game.moonOres.length) return;
+  if (dim !== 'over') { game.moonClear = true; return; }
+  for (const [c, r, t] of game.moonOres) if (getTile(c, r) === T.MOON_ORE) setTile(c, r, t);
+  game.moonOres = []; game.moonClear = false;
+}
+
+// ===================== Toplam oyuncu sayacı =====================
+// Ücretsiz bir sayaç servisinde tek bir sayı tutulur. Bir cihaz oyunu sitede (github.io) ilk kez
+// oynadığında sayı bir artar; sonra sadece okunur. Bilgisayardaki kopya ve testler sayıyı artırmaz.
+// Servise hiçbir kişisel bilgi gönderilmez, sadece "bir arttır" ya da "kaç oldu" denir.
+const PLAYER_COUNT_API = 'https://abacus.jasoncameron.dev', PLAYER_COUNT_PATH = 'yeralti-oyunu/oyuncular';
+const PLAYER_COUNTED_KEY = 'derinlere-kaz-sayildi';
+let playerCount = null, playerCountBusy = false;
+function playerCounted() { try { return localStorage.getItem(PLAYER_COUNTED_KEY) === '1'; } catch (e) { return true; } }
+function updatePlayerCount() {
+  if (playerCountBusy || typeof fetch !== 'function') return;
+  const live = /\.github\.io$/.test(location.hostname);           // sadece sitedeki oyun sayılır
+  const hit = live && !playerCounted() && state === 'playing';   // ilk kez oynuyor: say
+  playerCountBusy = true;
+  fetch(`${PLAYER_COUNT_API}/${hit ? 'hit' : 'get'}/${PLAYER_COUNT_PATH}`)
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => {
+      if (!d || typeof d.value !== 'number' || d.value < 0) return;
+      playerCount = d.value;
+      if (hit) try { localStorage.setItem(PLAYER_COUNTED_KEY, '1'); } catch (e) { /* bir dahakine yine sayılabilir */ }
+    })
+    .catch(() => { /* internet yoksa sayaç görünmez */ })
+    .finally(() => { playerCountBusy = false; });
+}
+updatePlayerCount();
+setInterval(() => { if (!playerCounted() && state === 'playing') updatePlayerCount(); }, 3000); // ilk oyun başlayınca say
+setInterval(updatePlayerCount, 120000);                                                              // 2 dakikada bir güncelle
+function drawPlayerCount(x, y, align = 'left') {
+  if (playerCount === null) return;
+  const s = `🌍 Toplam oyuncu: ${playerCount.toLocaleString('tr-TR')}`, f = 'bold 12px system-ui, sans-serif';
+  ctx.font = f;
+  const w = ctx.measureText(s).width + 16, x0 = align === 'right' ? x - w : x;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)'; roundRect(x0, y - 15, w, 22, 8); ctx.fill();
+  text(s, x0 + 8, y + 1, f, '#a5d6a7');
+}
+
+// ===================== YERALTI Rekorlar Kitabı =====================
+// Kitapta her rekorun sahibi kasabadan biridir; onu geçince kitaba SENİN adın yazılır.
+// low: küçük olan iyidir (en hızlı boss zaferi saniyesi)
+const RECORDS = [
+  { id: 'depth', icon: '⛏', name: 'En Derin Kazı', unit: 'blok', npc: 'Madenci Hasan', npcV: 250, get: g => g.maxDepth },
+  { id: 'money', icon: '💰', name: 'En Çok Para', unit: 'TL', npc: 'Tüccar Ayşe', npcV: 50000, get: g => g.records.money || 0 },
+  { id: 'boss', icon: '⚡', name: 'En Hızlı Boss Zaferi', unit: 'sn', npc: 'Şövalye Kerem', npcV: 120, low: true, get: g => g.records.bossFast || 0 },
+  { id: 'bosses', icon: '👑', name: 'En Çok Boss Yenen', unit: 'boss', npc: 'Kahraman Elif', npcV: 4, get: g => g.stats.bossKills || 0 },
+  { id: 'kills', icon: '⚔', name: 'En Çok Yaratık Yenen', unit: 'yaratık', npc: 'Avcı Murat', npcV: 200, get: g => g.stats.kills || 0 },
+  { id: 'earned', icon: '🏦', name: 'En Çok Kazanç', unit: 'TL', npc: 'Zengin Zeynep', npcV: 200000, get: g => g.stats.earned || 0 },
+  { id: 'moon', icon: '🌕', name: 'En Çok Ay Taşı', unit: 'taş', npc: 'Gökbilimci Ali', npcV: 10, get: g => g.stats.moonstones || 0 },
+];
+function recordBeaten(R, v) { return v > 0 && (R.low ? v < R.npcV : v > R.npcV); }
+function ensureRecords() {
+  if (!game.records) game.records = { money: 0, bossFast: 0, bossName: '', held: {} };
+  if (!game.records.held) game.records.held = {};
+  return game.records;
+}
+// her karede: en çok para güncellenir, bir rekor ilk kez geçilince kitaba adın yazılır
+let recordMsgUntil = 0; // duyurular art arda gelmesin, okunabilsin
+function recordsTick() {
+  const rec = ensureRecords();
+  if (game.money > (rec.money || 0)) rec.money = game.money;
+  if (performance.now() < recordMsgUntil) return;
+  for (const R of RECORDS) {
+    if (rec.held[R.id] || !recordBeaten(R, R.get(game))) continue;
+    rec.held[R.id] = new Date().toLocaleDateString('tr-TR');
+    const who = profile.name || 'Sen';
+    showMsg(`YENİ REKOR! ${R.icon} ${R.name}: ${R.get(game).toLocaleString('tr-TR')} ${R.unit}. Rekorlar Kitabı'na adın yazıldı! (📖)`);
+    newsLog(`${who}, YERALTI Rekorlar Kitabı'na girdi: ${R.name}! ${R.npc}'in rekoru kırıldı.`);
+    happySound();
+    save();
+    recordMsgUntil = performance.now() + 4000;
+    return; // bir seferde bir duyuru
+  }
+}
+function drawRecords() {
+  dimScreen();
+  const rec = ensureRecords(), who = profile.name || 'Sen';
+  const w = 880, h = 488, x = (VIEW_W - w) / 2, y = (VIEW_H - h) / 2, half = w / 2;
+  ctx.fillStyle = '#6d1b1b'; roundRect(x - 10, y - 10, w + 20, h + 20, 16); ctx.fill(); // kapak
+  ctx.fillStyle = '#f5ecd7'; roundRect(x, y, half - 4, h, 8); ctx.fill(); roundRect(x + half + 4, y, half - 4, h, 8); ctx.fill(); // sayfalar
+  ctx.fillStyle = '#c9b48a'; ctx.fillRect(x + half - 4, y, 8, h);                                                                // sırt
+  text('📖 YERALTI REKORLAR KİTABI', x + 24, y + 38, 'bold 22px Georgia, serif', '#6d1b1b');
+  text('Kasabanın en iyileri bu kitapta yazar', x + 24, y + 58, 'italic 13px Georgia, serif', '#8d6e63');
+  text('SENİN REKORLARIN', x + half + 28, y + 38, 'bold 20px Georgia, serif', '#6d1b1b');
+  text(`Rekortmen adı: ${who}`, x + half + 28, y + 58, 'italic 13px Georgia, serif', '#8d6e63');
+  closeButton(x + w - 44, y + 14, () => { overlay = null; });
+  RECORDS.forEach((R, i) => {
+    const ry = y + 76 + i * 57, v = R.get(game), mine = recordBeaten(R, v);
+    const fmt = n => `${n.toLocaleString('tr-TR')} ${R.unit}`;
+    // sol sayfa: rekor ve sahibi
+    ctx.fillStyle = mine ? 'rgba(255,193,7,0.28)' : 'rgba(109,27,27,0.06)'; roundRect(x + 14, ry, half - 32, 50, 8); ctx.fill();
+    text(R.icon, x + 34, ry + 32, '20px system-ui, sans-serif', '#000', 'center');
+    text(R.name, x + 56, ry + 21, 'bold 15px Georgia, serif', '#3e2723');
+    text(fitText(`${mine ? '★ ' + who : R.npc} · ${fmt(mine ? v : R.npcV)}`, 'bold 13px system-ui, sans-serif', half - 90), x + 56, ry + 41,
+      'bold 13px system-ui, sans-serif', mine ? '#bf360c' : '#5d4037');
+    // sağ sayfa: senin değerin ve hedef
+    const rx = x + half + 18;
+    ctx.fillStyle = 'rgba(109,27,27,0.06)'; roundRect(rx, ry, half - 36, 50, 8); ctx.fill();
+    text(`Senin: ${v ? fmt(v) : '—'}`, rx + 14, ry + 21, 'bold 14px system-ui, sans-serif', '#3e2723');
+    if (mine) text(`★ Rekor senin! (${rec.held[R.id] || 'bugün'})`, rx + 14, ry + 41, 'bold 13px system-ui, sans-serif', '#2e7d32');
+    else {
+      text(`Kitaba girmek için: ${R.low ? fmt(R.npcV) + "'den kısa" : fmt(R.npcV) + "'den fazla"}`, rx + 14, ry + 41, '12px system-ui, sans-serif', '#8d6e63');
+      if (!R.low && v > 0) { // ilerleme çubuğu
+        ctx.fillStyle = '#e0d4b8'; ctx.fillRect(rx + half - 150, ry + 12, 96, 8);
+        ctx.fillStyle = '#ff8f00'; ctx.fillRect(rx + half - 150, ry + 12, 96 * Math.min(1, v / R.npcV), 8);
+      }
+    }
+  });
+  if (rec.bossName) text(`En hızlı boss zaferin: ${rec.bossName}`, x + half + 28, y + h - 10, 'italic 11px Georgia, serif', '#8d6e63');
+}
+
 function startNight() {
-  // her FULL_MOON_EVERY gecede bir dolunay: madende daha hızlı kazılır
+  // gerçek dolunay günlerinde oyunun gecesi de dolunay: madende daha hızlı kazılır, Ay Taşı çıkar
   game.nights = (game.nights || 0) + 1;
-  game.fullMoon = game.nights % FULL_MOON_EVERY === 0;
+  game.fullMoon = realMoon().full;
   if (game.fullMoon) {
-    newsLog('Dün gece dolunay vardı; madenciler her zamankinden hızlı kazdı.');
-    showMsg('DOLUNAY GECESİ! Bu gece madende %40 daha hızlı kazarsın.');
+    spawnMoonOres();
+    newsLog('Dün gece gerçek dolunay vardı; madende Ay Taşları parladı!');
+    showMsg(dim === 'over'
+      ? 'DOLUNAY GECESİ! Madende AY TAŞLARI belirdi (sadece bu gece!). Kazma da %40 daha hızlı.'
+      : 'DOLUNAY GECESİ! Ay Taşları sadece Dünya\'nın madeninde çıkar.');
     [392, 523, 659].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'sine', 0.04), i * 200));
   }
   game.meteorNight = dim === 'over' && Math.random() < METEOR_CHANCE;
@@ -7998,13 +8193,42 @@ function drawOlyEvent(x, y) {
 // DÖNÜŞ KAPISI var: E ile geldiğin yere dönersin. Her boyutun cevheri sadece Hava Kontrol Makinesi'nde birleşir.
 const GATE_COL = 8;
 const ATL_SEABED = 60, MAR_PLATFORM = 7, DREAM_HOME = 31;
-const GATE_FEET = { atlantis: ATL_SEABED - 1, mirror: PLANET_SURFACE - 1, dream: DREAM_HOME - 1, mariana: MAR_PLATFORM - 1 };
+const GATE_FEET = { atlantis: ATL_SEABED - 1, mirror: PLANET_SURFACE - 1, dream: DREAM_HOME - 1, mariana: MAR_PLATFORM - 1, chess: PLANET_SURFACE - 1 };
 const COMPASS_INFO = {
   atlantis: { title: '🔱 ATLANTİS', desc: 'Su altındaki kayıp şehir: mermer tapınaklar, altın çatılar', ore: 'Orihalkum (tapınak çatıları)', boss: 'Poseidon (sağ uçta)', color: '#26c6da' },
   mirror: { title: '🪞 AYNA BOYUTU', desc: 'Her şey ters döner, kendi kopyalarınla savaşırsın', ore: 'Ayna Kristali (yer altında)', boss: 'Senin Kopyan (sağ uçta)', color: '#b2ebf2' },
   dream: { title: '💭 RÜYA BOYUTU', desc: 'Yerçekimi yok, adalar havada uçar, her girişte harita değişir', ore: 'Rüya Kristali (adalarda)', boss: 'Kâbuslar var, boss yok', color: '#f48fb1' },
   mariana: { title: '🐙 MARİANA ÇUKURU', desc: 'Dünyanın en derin yeri: karanlık sular, parlayan balıklar, Titanik batığı', ore: 'Mariana İncisi (duvarlarda)', boss: 'Derinlerin Kralı (en dipte)', color: '#4fc3f7' },
+  chess: { title: '♟️ SATRANÇ BOYUTU', desc: 'Zemin dev bir satranç tahtası: piyonlar asker, atlar L çizerek zıplar', ore: 'Fildişi (tahtanın altında)', boss: 'Siyah Şah (sağ uçta)', color: '#eeeeee' },
 };
+const COMPASS_ORE_KEY = { atlantis: 'orichalcum', mirror: 'mirrorShard', dream: 'dreamShard', mariana: 'pearl', chess: 'ivory' };
+// Satranç Boyutu: yüzey 4x4 bloklık dev karelerden bir tahta (2 kare derin), altında taş ve Fildişi;
+// tahtanın üstünde dev satranç taşları (kale, fil, vezir) durur
+const CHESS_SQ = 4;
+function generateChess() {
+  const R = DIM_ROWS, S = PLANET_SURFACE, w = new Uint8Array(COLS * R).fill(T.BEDROCK), set = (c, r, t) => { if (c > 0 && c < COLS - 1 && r >= 0 && r < R - 1) w[r * COLS + c] = t; };
+  const square = (c, r) => ((Math.floor(c / CHESS_SQ) + Math.floor((r - S) / CHESS_SQ)) % 2 ? T.CHESS_B : T.CHESS_W);
+  for (let r = 0; r < R - 1; r++) for (let c = 1; c < COLS - 1; c++) {
+    let t = T.AIR;
+    if (r >= S && r < S + CHESS_SQ * 2) t = square(c, r);
+    else if (r >= S + CHESS_SQ * 2) { const rnd = Math.random(); t = rnd < 0.045 ? T.IVORY : rnd < 0.065 ? T.IRON : rnd < 0.075 ? T.GOLD : rnd < 0.079 ? T.DIAMOND : T.STONE; }
+    w[r * COLS + c] = t;
+  }
+  carveCaves(w, Math.round(25 * COLS / 48), S + CHESS_SQ * 2 + 2, R - 3, 1, 2);
+  // dev satranç taşları: kareye zıt renkte; tepelerinde Fildişi
+  let k = 0;
+  for (let c0 = 20; c0 < COLS - 34; c0 += 12 + Math.floor(Math.random() * 7), k++) {
+    const col = square(c0 + 1, S) === T.CHESS_W ? T.CHESS_B : T.CHESS_W, kind = k % 3;
+    for (let c = c0; c <= c0 + 2; c++) set(c, S - 1, col); // taban
+    const h = kind === 0 ? 4 : kind === 1 ? 5 : 6;
+    for (let r = S - h; r < S - 1; r++) set(c0 + 1, r, col); // gövde
+    if (kind === 0) { set(c0, S - h, col); set(c0 + 2, S - h, col); set(c0 + 1, S - h - 1, T.IVORY); }  // kale: mazgallar
+    else if (kind === 1) { set(c0 + 1, S - h - 1, T.IVORY); }                                         // fil: sivri tepe
+    else { set(c0, S - h, col); set(c0 + 2, S - h, col); set(c0 + 1, S - h - 1, T.IVORY); set(c0, S - h - 1, T.IVORY); set(c0 + 2, S - h - 1, T.IVORY); } // vezir: taç
+  }
+  for (let c = 3; c <= 14; c++) for (let r = S - 6; r < S; r++) set(c, r, T.AIR); // dönüş kapısının önü açık
+  return w;
+}
 // ---- harita üretimleri ----
 function generateAtlantis() {
   const R = DIM_ROWS, S = ATL_SEABED, w = new Uint8Array(COLS * R).fill(T.BEDROCK), set = (c, r, t) => { w[r * COLS + c] = t; };
@@ -8107,6 +8331,22 @@ function generateMariana() { // derin, dar bir çukur: duvarlarda inci, ortada T
 // ---- gökyüzü / arka plan ----
 function drawCompassDimSky() {
   const t = performance.now() / 1000, g = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+  if (dim === 'chess') { // gri-mor gök, uzakta yavaşça kayan dev satranç tahtası deseni ve taş silüetleri
+    g.addColorStop(0, '#263238'); g.addColorStop(1, '#90a4ae');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    const sq = 60, ox = ((-cam.x * 0.08) % (sq * 2) + sq * 2) % (sq * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let yy = 0; yy < VIEW_H; yy += sq) for (let xx = -sq * 2; xx < VIEW_W + sq; xx += sq) if (((xx + yy) / sq) % 2 === 0) ctx.fillRect(xx + ox, yy, sq, sq);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    for (let i = 0; i < 6; i++) { // uzaktaki dev taşlar (şah, at, kale)
+      const x = ((i * 230 - cam.x * 0.15) % 1380 + 1380) % 1380 - 200, base = VIEW_H * 0.75;
+      ctx.fillRect(x - 30, base - 10, 60, 10); ctx.fillRect(x - 14, base - 90, 28, 80);
+      if (i % 3 === 0) { ctx.fillRect(x - 4, base - 120, 8, 30); ctx.fillRect(x - 14, base - 110, 28, 8); } // şahın haçı
+      else if (i % 3 === 1) { ctx.beginPath(); ctx.moveTo(x - 14, base - 90); ctx.lineTo(x + 26, base - 110); ctx.lineTo(x + 20, base - 80); ctx.fill(); } // at başı
+      else for (let k = 0; k < 3; k++) ctx.fillRect(x - 18 + k * 13, base - 104, 9, 14); // kale mazgalı
+    }
+    return;
+  }
   if (dim === 'mirror') {
     g.addColorStop(0, '#e1f5fe'); g.addColorStop(1, '#b3e5fc');
     ctx.fillStyle = g; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -8184,6 +8424,26 @@ function drawDimMob(z, m) {
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = m.eye; ctx.fillRect(cx - 6, z.y + 7, 4, 5); ctx.fillRect(cx + 2, z.y + 7, 4, 5);
     ctx.globalAlpha = 1;
+  } else if (m.pawn || m.chessKnight) { // siyah satranç taşları: taban, gövde; piyon kask ve mızrakla asker, at başı
+    const col = z.flash > 0 ? '#ffffff' : '#212121', hi = '#4a4a4f', bob = m.pawn ? Math.abs(Math.sin(t * 2)) * 2 : 0;
+    ctx.fillStyle = col;
+    roundRect(cx - 11, feet - 6, 22, 6, 2); ctx.fill();                       // taban
+    ctx.beginPath(); ctx.moveTo(cx - 8, feet - 6); ctx.lineTo(cx + 8, feet - 6); ctx.lineTo(cx + 4, feet - 18 - bob); ctx.lineTo(cx - 4, feet - 18 - bob); ctx.fill(); // gövde
+    if (m.pawn) {
+      ctx.beginPath(); ctx.arc(cx, feet - 23 - bob, 7, 0, Math.PI * 2); ctx.fill(); // baş
+      ctx.fillStyle = '#5d4037'; ctx.fillRect(cx - 8, feet - 31 - bob, 16, 3);       // kask siperi
+      ctx.fillStyle = '#9e9e9e'; ctx.fillRect(cx + f * 10, feet - 34, 2, 30);           // mızrak
+      ctx.beginPath(); ctx.moveTo(cx + f * 10 - 2, feet - 34); ctx.lineTo(cx + f * 11, feet - 41); ctx.lineTo(cx + f * 10 + 4, feet - 34); ctx.fill();
+      ctx.fillStyle = m.eye; ctx.fillRect(cx + f * 2 - 1, feet - 25 - bob, 3, 2);
+    } else { // at: yukarı kalkan boyun ve uzun burun, yele
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, feet - 17); ctx.lineTo(cx - 7, feet - 30); ctx.lineTo(cx + f * 2, feet - 36);
+      ctx.lineTo(cx + f * 13, feet - 27); ctx.lineTo(cx + f * 11, feet - 22); ctx.lineTo(cx + f * 3, feet - 24); ctx.lineTo(cx + 6, feet - 17);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = hi; for (let k = 0; k < 4; k++) ctx.fillRect(cx - f * 7, feet - 32 + k * 4, 3, 2); // yele
+      ctx.fillStyle = m.eye; ctx.fillRect(cx + f * 4 - 1, feet - 30, 3, 3);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(cx - 3, feet - 16 - bob, 2, 9); // parlaklık
   } else if (m.angler) { // fener balığı: koca ağız, sivri dişler, başında fener
     const y = z.y + z.h / 2;
     ctx.fillStyle = z.flash > 0 ? '#ffffff' : m.skin;
@@ -8220,6 +8480,23 @@ function drawMirrorBoss(b, def) { // dev kopyan: senin kıyafetin, parlayan ayna
   drawPerson(b.x + b.w / 2, b.y + b.h, { ...look, skin: '#e0f7fa', eye: def.eye, facing: player.x < b.x + b.w / 2 ? -1 : 1 }, 2.6);
   ctx.strokeStyle = b.flash > 0 ? '#fff' : `rgba(178,235,242,${0.6 + 0.3 * Math.sin(performance.now() / 200)})`; ctx.lineWidth = 3;
   ctx.strokeRect(b.x - 8, b.y - 8, b.w + 16, b.h + 14);
+}
+function drawBlackKing(b, def) { // Siyah Şah: dev satranç şahı; tepesinde haç, kızgın sarı gözler, pelerin
+  const cx = b.x + b.w / 2, feet = b.y + b.h, t = performance.now() / 400, col = b.flash > 0 ? '#ffffff' : def.color;
+  ctx.fillStyle = '#7b1fa2'; // mor pelerin dalgalanır
+  ctx.beginPath(); ctx.moveTo(cx - 22, feet - 78); ctx.lineTo(cx + 22, feet - 78);
+  ctx.lineTo(cx + 34 + Math.sin(t) * 4, feet - 12); ctx.lineTo(cx - 34 + Math.sin(t + 1) * 4, feet - 12); ctx.fill();
+  ctx.fillStyle = col;
+  roundRect(cx - 40, feet - 14, 80, 14, 4); ctx.fill();                              // taban
+  roundRect(cx - 32, feet - 24, 64, 12, 4); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - 26, feet - 24); ctx.lineTo(cx + 26, feet - 24); ctx.lineTo(cx + 16, feet - 76); ctx.lineTo(cx - 16, feet - 76); ctx.fill(); // gövde
+  roundRect(cx - 26, feet - 84, 52, 10, 4); ctx.fill();                              // yaka
+  ctx.beginPath(); ctx.moveTo(cx - 22, feet - 84); ctx.quadraticCurveTo(cx, feet - 112, cx + 22, feet - 84); ctx.fill(); // baş
+  ctx.fillRect(cx - 4, feet - 128, 8, 22); ctx.fillRect(cx - 12, feet - 122, 24, 7);  // haç
+  ctx.fillStyle = '#ffd54f'; roundRect(cx - 26, feet - 84, 52, 4, 2); ctx.fill();      // altın yaka şeridi
+  ctx.fillStyle = def.eye; ctx.fillRect(cx - 12, feet - 98, 7, 4); ctx.fillRect(cx + 5, feet - 98, 7, 4); // gözler
+  ctx.strokeStyle = def.eye; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx - 14, feet - 104); ctx.lineTo(cx - 5, feet - 101); ctx.moveTo(cx + 14, feet - 104); ctx.lineTo(cx + 5, feet - 101); ctx.stroke(); // kızgın kaşlar
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(cx - 10, feet - 70, 4, 40);  // parlaklık
 }
 function drawGiantOctopus(b, def) { // derinlerin kralı: dev mor ahtapot, sekiz dalgalı kol
   const cx = b.x + b.w / 2, cy = b.y + 40, t = performance.now() / 500;
@@ -8259,6 +8536,7 @@ function travelCompass(d) {
     mirror: 'AYNA BOYUTU! Her şey ters: sağ sol, sol sağ. Kopyaların sana saldıracak. Senin Kopyan sağ uçta!',
     dream: 'RÜYA BOYUTU! Yerçekimi yok: W/S ile yüksel, alçal. Bu adalar bir dahaki girişte değişecek.',
     mariana: 'MARİANA ÇUKURU! Aşağı indikçe karanlık. Ortada TİTANİK batığı var, en dipte dev boss. Oksijen tüpü al!',
+    chess: 'SATRANÇ BOYUTU! Piyon askerler yürür, atlar L çizerek üstüne zıplar. Fildişi tahtanın altında. Siyah Şah sağ uçta!',
   };
   showMsg(msgs[d]);
   beep(200, 0.8, 'sine', 0.06, 500);
@@ -8293,16 +8571,18 @@ function drawDimCompass() {
   text('🧭 BOYUT PUSULASI', x + 24, y + 38, 'bold 22px system-ui, sans-serif', '#d1c4e9');
   text('Bir boyut seç, GİT. Dönmek için o boyutun girişindeki DÖNÜŞ KAPISI\'nda E.', x + 24, y + 62, '13px system-ui, sans-serif', '#b39ddb');
   closeButton(x + w - 44, y + 14, () => { overlay = null; });
+  // 3 sütun: kartlar telefonda da dokunarak seçilir
   COMPASS_DIMS.forEach((d, i) => {
-    const info = COMPASS_INFO[d], bx = x + 20 + (i % 2) * 415, by = y + 80 + Math.floor(i / 2) * 190;
-    ctx.fillStyle = 'rgba(255,255,255,0.06)'; roundRect(bx, by, 405, 178, 12); ctx.fill();
+    const info = COMPASS_INFO[d], cw = 266, bx = x + 20 + (i % 3) * (cw + 8), by = y + 80 + Math.floor(i / 3) * 190;
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; roundRect(bx, by, cw, 178, 12); ctx.fill();
     ctx.strokeStyle = info.color; ctx.lineWidth = 2; ctx.stroke();
-    text(info.title, bx + 16, by + 30, 'bold 18px system-ui, sans-serif', info.color);
-    text(fitText(info.desc, '13px system-ui, sans-serif', 375), bx + 16, by + 56, '13px system-ui, sans-serif', '#eceff1');
-    text(`Cevher: ${info.ore}`, bx + 16, by + 82, '12px system-ui, sans-serif', '#c5cae9');
-    text(`Sende: ${game.inv[{ atlantis: 'orichalcum', mirror: 'mirrorShard', dream: 'dreamShard', mariana: 'pearl' }[d]]}`, bx + 16, by + 100, '12px system-ui, sans-serif', '#c5cae9');
-    text(`Boss: ${info.boss}${BOSSES[d] && game.bossDefeated[d] ? ' ✓ yenildi' : ''}`, bx + 16, by + 118, '12px system-ui, sans-serif', '#ffab91');
-    uiButton(bx + 16, by + 132, 140, 34, 'GİT →', () => travelCompass(d), { bg: '#5e35b1', font: 'bold 15px system-ui, sans-serif' });
+    text(fitText(info.title, 'bold 17px system-ui, sans-serif', cw - 24), bx + 14, by + 28, 'bold 17px system-ui, sans-serif', info.color);
+    wrapText(info.desc, '12px system-ui, sans-serif', cw - 24).slice(0, 2)
+      .forEach((l, j) => text(l, bx + 14, by + 50 + j * 15, '12px system-ui, sans-serif', '#eceff1'));
+    text(fitText(`Cevher: ${info.ore}`, '12px system-ui, sans-serif', cw - 24), bx + 14, by + 90, '12px system-ui, sans-serif', '#c5cae9');
+    text(`Sende: ${game.inv[COMPASS_ORE_KEY[d]] || 0}`, bx + 14, by + 107, '12px system-ui, sans-serif', '#c5cae9');
+    text(fitText(`Boss: ${info.boss}${BOSSES[d] && game.bossDefeated[d] ? ' ✓' : ''}`, '12px system-ui, sans-serif', cw - 24), bx + 14, by + 124, '12px system-ui, sans-serif', '#ffab91');
+    uiButton(bx + 14, by + 134, 130, 36, 'GİT →', () => travelCompass(d), { bg: '#5e35b1', font: 'bold 15px system-ui, sans-serif' });
   });
 }
 // ---- Titanik hazinesi ----
@@ -10940,6 +11220,7 @@ const MUSIC = {
   mirror: { step: 0.32, wave: 'triangle', vol: 0.022, notes: [523, 494, 440, 392, 392, 440, 494, 523] }, // tersine dönen melodi
   dream: { step: 0.7, wave: 'sine', vol: 0.03, notes: [659, 784, 988, 784, 698, 880, 1047, 880] },     // uykulu
   mariana: { step: 0.9, wave: 'sine', vol: 0.035, notes: [98, 110, 98, 87, 82, 87, 73, 82] },          // derin ve karanlık
+  chess: { step: 0.4, wave: 'triangle', vol: 0.022, notes: [440, 523, 440, 659, 587, 523, 494, 440] },  // düşünceli, ağırbaşlı
 };
 let musicOn = (() => { try { return localStorage.getItem(MUSIC_KEY) !== '0'; } catch (e) { return true; } })();
 let musicNext = 0, musicStep = 0, musicKey = '';
@@ -12395,6 +12676,7 @@ function updateBoss(dt) {
     if (dim === 'mariana') Object.assign(boss, { x: player.x + 6 * TILE, y: player.y + 2 * TILE, w: 120, h: 100 }); // dev ahtapot
     if (dim === 'atlantis') Object.assign(boss, { w: 64, h: 90 });    // Poseidon uzun boylu
     if (dim === 'mirror') Object.assign(boss, { w: 50, h: 76 });      // senin büyük kopyan
+    if (dim === 'chess') Object.assign(boss, { w: 70, h: 128, y: PLANET_SURFACE * TILE - 128 }); // dev Siyah Şah
     showMsg(`${def.name.toUpperCase()} UYANDI!`);
     beep(70, 1, 'sawtooth', 0.1, 40);
   }
@@ -12469,6 +12751,8 @@ function damageBoss(dmg) {
 
 function killBoss() {
   const def = BOSSES[dim];
+  const secs = Math.max(1, Math.round(boss.t || 0)), rec = ensureRecords(); // Rekorlar Kitabı: en hızlı boss zaferi
+  if (!rec.bossFast || secs < rec.bossFast) { rec.bossFast = secs; rec.bossName = `${def.name} · ${secs} sn`; }
   game.bossDefeated[dim] = true;
   if (def.egg) game.inv[def.egg]++;
   if (def.drop) game.inv[def.drop.key] += def.drop.n;
@@ -14012,6 +14296,8 @@ function updateOverlay() {
     if (pressed.has('KeyE') || pressed.has('Escape')) { overlay = null; save(); }
   } else if (overlay === 'achievements') {
     if (pressed.has('KeyJ') || pressed.has('Escape')) overlay = null;
+  } else if (overlay === 'records') {
+    if (pressed.has('Escape')) overlay = null;
   } else if (overlay === 'skills') {
     if (pressed.has('KeyX') || pressed.has('Escape')) overlay = null;
   } else if (overlay === 'museum') {
@@ -14888,6 +15174,36 @@ function drawTile(t, x, y, c, r) {
       ctx.fillStyle = '#ffd54f'; ctx.fillRect(x + 14, y + 14, 4, 5);
       ctx.fillStyle = 'rgba(102,187,106,0.7)'; ctx.fillRect(x + 4, y + 8, 7, 3); ctx.fillRect(x + 20, y + 26, 8, 3); // yosun
       break;
+    case T.CHESS_W:
+    case T.CHESS_B: { // satranç karesi: parlak cilalı düz renk; komşu aynı renkse arada çizgi yok (dev kare görünür)
+      const white = t === T.CHESS_W;
+      ctx.fillStyle = white ? '#f2ede0' : '#232326'; ctx.fillRect(x, y, TILE, TILE);
+      ctx.fillStyle = white ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)';
+      if ((h & 3) === 0) ctx.fillRect(x + 4 + (h % 20), y + 6 + ((h >> 5) % 18), 6, 2); // ince damar
+      ctx.fillStyle = white ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.12)';
+      if (getTile(c, r - 1) !== t) ctx.fillRect(x, y, TILE, 2);
+      if (getTile(c - 1, r) !== t) ctx.fillRect(x, y, 2, TILE);
+      if (getTile(c + 1, r) !== t) ctx.fillRect(x + TILE - 2, y, 2, TILE);
+      if (getTile(c, r + 1) !== t) ctx.fillRect(x, y + TILE - 2, TILE, 2);
+      if (white && getTile(c, r - 1) !== t) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x, y + 2, TILE, 1); } // cila
+      break;
+    }
+    case T.IVORY: // Fildişi: taşın içinde krem rengi, kavisli fildişi parçaları
+      block(x, y, base, dark, h);
+      ctx.strokeStyle = '#fff3d6'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(x + 12 + (h % 4), y + 22, 9, Math.PI * 1.1, Math.PI * 1.75); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + 22, y + 14 + ((h >> 3) % 4), 6, Math.PI * 0.1, Math.PI * 0.8); ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(x + 8 + (h % 4), y + 15, 2, 2);
+      break;
+    case T.MOON_ORE: { // Ay Taşı: taşın içinde ay ışığı gibi parlayan soluk mavi kristaller
+      block(x, y, base, dark, h);
+      const pulse = 0.25 + 0.2 * Math.sin(performance.now() / 400 + h);
+      ctx.fillStyle = `rgba(179,229,252,${pulse})`; ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+      oreGems(x, y, h, '#e1f5fe');
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x + 23, y + 8, 3, 0.6, Math.PI * 1.7); ctx.fill(); // minik hilal
+      break;
+    }
     case T.BH_ORE: { // kara taşın içinde parlayan mor kristaller
       block(x, y, '#1c1029', '#120a1c', h);
       oreGems(x, y, h, (Math.floor(performance.now() / 500) + h) % 4 === 0 ? '#e040fb' : '#b388ff');
@@ -15414,19 +15730,12 @@ function drawBackground() {
         const h = hash(i, 99);
         ctx.fillRect(h % VIEW_W, (h >> 10) % 260, 2, 2);
       }
-      // ay: dolunayda kocaman ve parlak, diğer gecelerde ince hilal
+      // ay: gerçek ayın bugünkü evresi; dolunay gecesi kocaman ve parlak
       const full = game && game.fullMoon;
-      const mx = 630, my = 56, mr = full ? 38 : 20; // paneller ve mesajlar arasında, açık gökte
+      const mx = 630, my = 56, mr = full ? 38 : 26; // paneller ve mesajlar arasında, açık gökte
       if (full) { ctx.fillStyle = `rgba(255,248,200,${nf * 0.18})`; ctx.beginPath(); ctx.arc(mx, my, mr * 1.8, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = `rgba(255,249,196,${nf})`;
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fill();
-      if (full) {
-        ctx.fillStyle = `rgba(224,215,160,${nf * 0.8})`;
-        for (const [ox, oy, rr] of [[-14, -8, 8], [12, 10, 6], [6, -16, 4]]) { ctx.beginPath(); ctx.arc(mx + ox, my + oy, rr, 0, Math.PI * 2); ctx.fill(); }
-      } else {
-        ctx.fillStyle = mixColor('#1e5bc6', '#0b1030', nf);
-        ctx.beginPath(); ctx.arc(mx + 9, my - 4, mr, 0, Math.PI * 2); ctx.fill();
-      }
+      drawMoonPhase(mx, my, mr, nf);
+      if (nf > 0.6) text(realMoon().name, mx, my + mr + 16, '11px system-ui, sans-serif', `rgba(255,249,196,${nf * 0.8})`, 'center');
     }
     return;
   }
@@ -15448,7 +15757,7 @@ function drawBackground() {
     return;
   }
   if (dim === 'blackhole') { drawBlackholeSky(); return; }
-  if (dim === 'mirror' || dim === 'dream' || dim === 'atlantis' || dim === 'mariana') { drawCompassDimSky(); return; }
+  if (dim === 'mirror' || dim === 'dream' || dim === 'atlantis' || dim === 'mariana' || dim === 'chess') { drawCompassDimSky(); return; }
   if (dim === 'cloud' || dim === 'candy' || dim === 'past' || NEW_ERA_DIMS.includes(dim)) {
     const [top, bottom] = { cloud: ['#4fc3f7', '#e1f5fe'], candy: ['#f8bbd0', '#fff3e0'], past: ['#ff8a65', '#ffe0b2'],
       egypt: ['#ffb74d', '#fff3e0'], knight: ['#64b5f6', '#e3f2fd'], future: ['#0d0b2e', '#4a148c'], magnet: ['#1a1d2e', '#455a64'] }[dim];
@@ -16122,6 +16431,7 @@ function drawBoss() {
   if (dim === 'atlantis') { drawPoseidon(boss, def); drawBossShots(); return; }
   if (dim === 'mirror') { drawMirrorBoss(boss, def); drawBossShots(); return; }
   if (dim === 'mariana') { drawGiantOctopus(boss, def); drawBossShots(); return; }
+  if (dim === 'chess') { drawBlackKing(boss, def); drawBossShots(); return; }
   if (def.ground) { drawCuteTrex(boss, def); drawBossShots(); return; }
   ctx.fillStyle = boss.flash > 0 ? '#ffffff' : def.color;
   if (dim === 'purple') {
@@ -16359,7 +16669,7 @@ function drawZombies() {
     }
     if (m.mummy || m.knight || m.dragon || m.robot) { drawEraMob(z, m); continue; }
     if (m.voidling) { drawVoidling(z, m); continue; }
-    if (m.merman || m.mirrorCopy || m.ghost || m.angler) { drawDimMob(z, m); continue; }
+    if (m.merman || m.mirrorCopy || m.ghost || m.angler || m.pawn || m.chessKnight) { drawDimMob(z, m); continue; }
     if (m.fly) { drawUfoBug(z, m); continue; }
     const cx = z.x + z.w / 2;
     const feet = z.y + z.h;
@@ -16566,6 +16876,8 @@ function drawHUD() {
     }
     if (!hudOpen) uiButton(VIEW_W - 130, 50, 120, 30, `👥 ARKADAŞ${friends.incoming.length ? ' •' : ''}`, () => toggleOverlay('friends'),
       { bg: 'rgba(0,0,0,0.65)', border: friends.incoming.length ? '#ffd54f' : '#64b5f6', font: 'bold 12px system-ui, sans-serif' });
+    if (!hudOpen) uiButton(VIEW_W - 130, 86, 120, 30, '📖 REKORLAR', () => toggleOverlay('records'),
+      { bg: overlay === 'records' ? '#6d1b1b' : 'rgba(0,0,0,0.65)', border: '#ffb74d', font: 'bold 12px system-ui, sans-serif' });
     if (game.newsUnread && game.news) { // okunmamış sabah gazetesi
       const blink = Math.floor(performance.now() / 600) % 2;
       uiButton(VIEW_W - 290, 10, 150, 34, 'YENİ GAZETE (Ç)', toggleNews,
@@ -16587,6 +16899,7 @@ function drawHUD() {
     const where = isPlanet(dim) ? PLANETS[dim].name.toUpperCase() : dim === 'capital' ? curCapital().city.toUpperCase()
       : dim !== 'over' ? DIMS[dim].name.toUpperCase() : `${biomeAt(centerCol()).name} · Derinlik ${Math.max(0, playerDepth())}`;
     text(fitText(`${where}${isNight() ? ' · gece' : ''}${hasDebt ? ' · fatura!' : ''}`, '13px system-ui, sans-serif', 276), 22, 88, '13px system-ui, sans-serif', hasDebt ? '#ff8a80' : '#fff');
+    drawPlayerCount(10, 122); // paneli altında, köşede
     drawHotbar(false);
     return;
   }
@@ -16664,11 +16977,13 @@ function drawHUD() {
       { bg: overlay === 'news' ? '#5d4037' : 'rgba(0,0,0,0.65)', border: '#f5f0e1' });
     uiButton(VIEW_W - 210, 370, 97, 34, 'PASAPORT', () => openPassport(), { bg: 'rgba(0,0,0,0.65)', border: '#ffcc80', font: 'bold 11px system-ui, sans-serif' });
     uiButton(VIEW_W - 107, 370, 97, 34, 'DÜNYA KUPASI', () => toggleOverlay('worldcup'), { bg: 'rgba(0,0,0,0.65)', border: '#ffd54f', font: 'bold 11px system-ui, sans-serif' });
+    uiButton(VIEW_W - 210, 410, 200, 34, '📖 REKORLAR KİTABI', () => toggleOverlay('records'),
+      { bg: overlay === 'records' ? '#6d1b1b' : 'rgba(0,0,0,0.65)', border: '#ffb74d' });
     if (mp) {
       const names = [mp.name, ...mp.others.map(o => o.name)];
-      panel(VIEW_W - 210, 410, 200, 22 + names.length * 16);
-      text(`ÇEVRİMİÇİ · ${names.length} oyuncu${mp.host ? ' (dünya senin)' : ''}`, VIEW_W - 200, 426, 'bold 12px system-ui, sans-serif', '#69f0ae');
-      names.forEach((n, i) => text(`• ${n}`, VIEW_W - 196, 444 + i * 16, '12px system-ui, sans-serif', '#fff'));
+      panel(VIEW_W - 210, 450, 200, 22 + names.length * 16);
+      text(`ÇEVRİMİÇİ · ${names.length} oyuncu${mp.host ? ' (dünya senin)' : ''}`, VIEW_W - 200, 466, 'bold 12px system-ui, sans-serif', '#69f0ae');
+      names.forEach((n, i) => text(`• ${n}`, VIEW_W - 196, 484 + i * 16, '12px system-ui, sans-serif', '#fff'));
     }
     // kenardaki artı: evcil hayvanlar
     const py = hasDebt ? 274 : 252;
@@ -17990,6 +18305,7 @@ function render() {
   if (state === 'playing') {
     if (overlay === 'smith') drawShop();
     else if (overlay === 'achievements') drawAchievements();
+    else if (overlay === 'records') drawRecords();
     else if (overlay === 'skills') drawSkills();
     else if (overlay === 'museum') drawMuseum();
     else if (overlay === 'teleport') drawTeleport();
