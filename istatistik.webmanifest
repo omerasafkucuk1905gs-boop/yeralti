@@ -1,0 +1,16 @@
+{
+  "name": "YERALTI İstatistik",
+  "short_name": "YERALTI İstat",
+  "description": "YERALTI oyununu toplam ve her ay kaç kişinin oynadığı.",
+  "lang": "tr",
+  "start_url": "istatistik.html",
+  "scope": "istatistik",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "istatistik-ikon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "istatistik-ikon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

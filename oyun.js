@@ -2667,7 +2667,6 @@ function drawMenuButtons() {
   // 3B görünüm: bloklar derinlikli küp olarak çizilir (oyun aynı)
   uiButton(cx - 120, y + 48, 240, 30, view3d ? '🧊 3B GÖRÜNÜM: AÇIK' : '🧊 3B GÖRÜNÜM: KAPALI', () => setView3d(!view3d), { bg: view3d ? '#6a1b9a' : '#455a64', border: '#ffd54f', font: 'bold 14px system-ui, sans-serif' });
   text(`Oyuncu: ${profile.name || '-'} · ${isPhone() ? '📱 Telefon' : '💻 PC'}`, cx + 136, y + 68, 'bold 13px system-ui, sans-serif', '#ffd54f');
-  drawPlayerCount(VIEW_W - 10, 24, 'right'); // menüde sağ üst köşe
 }
 
 // ===================== Arkadaşlar: isimle davet =====================
@@ -4016,17 +4015,25 @@ function updatePlayerCount() {
     .catch(() => { /* internet yoksa sayaç görünmez */ })
     .finally(() => { playerCountBusy = false; });
 }
-updatePlayerCount();
-setInterval(() => { if (!playerCounted() && state === 'playing') updatePlayerCount(); }, 3000); // ilk oyun başlayınca say
-setInterval(updatePlayerCount, 120000);                                                              // 2 dakikada bir güncelle
-function drawPlayerCount(x, y, align = 'left') {
-  if (playerCount === null) return;
-  const s = `🌍 Toplam oyuncu: ${playerCount.toLocaleString('tr-TR')}`, f = 'bold 12px system-ui, sans-serif';
-  ctx.font = f;
-  const w = ctx.measureText(s).width + 16, x0 = align === 'right' ? x - w : x;
-  ctx.fillStyle = 'rgba(0,0,0,0.55)'; roundRect(x0, y - 15, w, 22, 8); ctx.fill();
-  text(s, x0 + 8, y + 1, f, '#a5d6a7');
+// Aylık sayaç: her ayın kendi sayacı vardır (yeralti-oyunu/oyuncular-2026-10 gibi). Bir cihaz
+// sitede oynadığı her ay o ayın sayacını bir kez arttırır. istatistik.html bu sayaçları okur.
+const PLAYER_MONTH_KEY = 'derinlere-kaz-sayilan-ay';
+let monthCountBusy = false;
+function thisMonth() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; }
+function monthCounted() { try { return localStorage.getItem(PLAYER_MONTH_KEY) === thisMonth(); } catch (e) { return true; } }
+function countMonthlyPlayer() {
+  if (monthCountBusy || typeof fetch !== 'function' || monthCounted()) return;
+  if (!/\.github\.io$/.test(location.hostname) || state !== 'playing') return;
+  const ay = thisMonth();
+  monthCountBusy = true;
+  fetch(`${PLAYER_COUNT_API}/hit/${PLAYER_COUNT_PATH}-${ay}`)
+    .then(r => { if (r.ok) try { localStorage.setItem(PLAYER_MONTH_KEY, ay); } catch (e) { /* bir dahakine yine sayılabilir */ } })
+    .catch(() => { /* internet yoksa sonra denenir */ })
+    .finally(() => { monthCountBusy = false; });
 }
+// sayı oyunda gösterilmez (istatistik.html'de görünür); oyun sadece ilk kez oynayınca sayar
+setInterval(() => { if (!playerCounted() && state === 'playing') updatePlayerCount(); }, 3000); // ilk oyun başlayınca say
+setInterval(countMonthlyPlayer, 3000);                                                               // bu ay ilk oynayınca say
 
 // ===================== YERALTI Rekorlar Kitabı =====================
 // Kitapta her rekorun sahibi kasabadan biridir; onu geçince kitaba SENİN adın yazılır.
@@ -17542,7 +17549,6 @@ function drawHUD() {
     const where = isPlanet(dim) ? PLANETS[dim].name.toUpperCase() : dim === 'capital' ? curCapital().city.toUpperCase()
       : dim !== 'over' ? DIMS[dim].name.toUpperCase() : `${biomeAt(centerCol()).name} · Derinlik ${Math.max(0, playerDepth())}`;
     text(fitText(`${where}${isNight() ? ' · gece' : ''}${hasDebt ? ' · fatura!' : ''}`, '13px system-ui, sans-serif', 276), 22, 88, '13px system-ui, sans-serif', hasDebt ? '#ff8a80' : '#fff');
-    drawPlayerCount(10, 122); // paneli altında, köşede
     drawHotbar(false);
     return;
   }

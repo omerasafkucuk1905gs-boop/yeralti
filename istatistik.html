@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#ffffff">
+  <title>YERALTI - Oyuncu İstatistikleri</title>
+  <meta name="description" content="YERALTI oyununu toplam ve her ay kaç kişinin oynadığı.">
+  <link rel="manifest" href="istatistik.webmanifest">
+  <link rel="icon" href="istatistik-ikon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="istatistik-ikon.svg">
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #ffffff; --surface: #ffffff; --soft: #f5f7fa; --border: #e8ebf0;
+      --ink: #0b0b0b; --ink-2: #52514e; --muted: #8a8984; --grid: #eef0f3;
+      --bar: #2a78d6; --bar-hover: #1c5cab; --accent: #2a78d6;
+      --up: #0a7d0a; --down: #c03030;
+      --golge: 0 1px 2px rgba(16, 24, 40, .04), 0 4px 16px rgba(16, 24, 40, .06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--page); color: var(--ink);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    main { max-width: 760px; margin: 0 auto; padding: 28px 16px 48px; padding-top: max(28px, env(safe-area-inset-top)); }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+    .marka { display: flex; align-items: center; gap: 10px; }
+    .marka img { width: 36px; height: 36px; border-radius: 10px; box-shadow: var(--golge); }
+    h1 { font-size: 19px; margin: 0; letter-spacing: .3px; }
+    h1 span { color: var(--accent); }
+    h1 small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+    h2 { font-size: 15px; margin: 0 0 14px; color: var(--ink); font-weight: 650; }
+    .dugmeler { display: flex; gap: 8px; }
+    .dugme {
+      color: var(--ink); text-decoration: none; font: 600 14px system-ui, sans-serif; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface); padding: 8px 14px; border-radius: 99px;
+      box-shadow: var(--golge);
+    }
+    .dugme.ana { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .dugme[hidden] { display: none; }
+    .kart { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: var(--golge); }
+    .toplam { text-align: center; padding: 34px 20px; background: linear-gradient(135deg, #2a78d6, #1c5cab); border: 0; color: #fff; }
+    .toplam .etiket { font-size: 14px; opacity: .9; }
+    .toplam .sayi { font-size: 60px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; margin: 8px 0; letter-spacing: -1px; }
+    .toplam .alt { font-size: 13px; opacity: .75; }
+    .ozet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .ozet .kart { margin: 0; padding: 16px; }
+    .ozet .etiket { color: var(--muted); font-size: 12px; font-weight: 500; }
+    .ozet .deger { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .ipucu-yukle { display: none; background: var(--soft); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--ink-2); margin-bottom: 16px; }
+    .grafik-kutu { position: relative; }
+    svg { display: block; width: 100%; height: auto; overflow: visible; }
+    svg text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+    svg .bar { fill: var(--bar); cursor: default; }
+    svg .bar.on { fill: var(--bar-hover); }
+    svg .deger-yazi { fill: var(--ink-2); font-weight: 600; }
+    .ipucu {
+      position: absolute; pointer-events: none; background: var(--ink); color: var(--page);
+      padding: 6px 10px; border-radius: 6px; font-size: 13px; white-space: nowrap;
+      transform: translate(-50%, -100%); opacity: 0; transition: opacity .1s;
+    }
+    .ipucu b { font-variant-numeric: tabular-nums; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    tbody tr:hover { background: var(--soft); }
+    td.n, th.n { text-align: right; }
+    tr:last-child td { border-bottom: 0; }
+    .rozet { font-size: 11px; color: var(--accent); border: 1px solid currentColor; border-radius: 99px; padding: 1px 7px; margin-left: 6px; white-space: nowrap; }
+    .up { color: var(--up); } .down { color: var(--down); } .yok { color: var(--muted); }
+    .durum { color: var(--muted); font-size: 13px; text-align: center; margin-top: 8px; }
+    .hata { color: var(--down); }
+    @media (max-width: 520px) {
+      .toplam .sayi { font-size: 44px; }
+      .ozet { grid-template-columns: 1fr 1fr; }
+      .ozet .kart:last-child { grid-column: span 2; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="marka">
+      <img src="istatistik-ikon.svg" alt="">
+      <h1>YER<span>ALTI</span><small>Oyuncu istatistikleri</small></h1>
+    </div>
+    <div class="dugmeler">
+      <button class="dugme" id="yukleDugme" hidden>📲 Yükle</button>
+      <a class="dugme ana" href="./">▶ Oyna</a>
+    </div>
+  </header>
+
+  <div class="ipucu-yukle" id="iosIpucu">📲 Uygulama olarak eklemek için Safari'de <b>Paylaş</b> düğmesine, sonra <b>Ana Ekrana Ekle</b>'ye dokun.</div>
+
+  <section class="kart toplam">
+    <div class="etiket">🌍 Oyunu oynayan toplam kişi</div>
+    <div class="sayi" id="toplam">…</div>
+    <div class="alt">Her cihaz bir kez sayılır</div>
+  </section>
+
+  <section class="ozet">
+    <div class="kart"><div class="etiket">Bu ay</div><div class="deger" id="buAy">…</div></div>
+    <div class="kart"><div class="etiket">Geçen ay</div><div class="deger" id="gecenAy">…</div></div>
+    <div class="kart"><div class="etiket">En çok oynanan ay</div><div class="deger" id="enIyi">…</div></div>
+  </section>
+
+  <section class="kart">
+    <h2>Aylara göre oyuncu sayısı</h2>
+    <div class="grafik-kutu">
+      <svg id="grafik" role="img" aria-label="Aylık oyuncu sayısı grafiği"></svg>
+      <div class="ipucu" id="ipucu"></div>
+    </div>
+  </section>
+
+  <section class="kart">
+    <h2>Aylık tablo</h2>
+    <table>
+      <thead><tr><th>Ay</th><th class="n">Oyuncu</th><th class="n">Önceki aya göre</th></tr></thead>
+      <tbody id="tablo"></tbody>
+    </table>
+  </section>
+
+  <div class="durum" id="durum">Yükleniyor…</div>
+</main>
+
+<script>
+  // Sayılar oyunla aynı ücretsiz sayaç servisinden okunur (oyun.js: "Toplam oyuncu sayacı").
+  // Toplam: yeralti-oyunu/oyuncular, her ay: yeralti-oyunu/oyuncular-YYYY-AA
+  const API = 'https://abacus.jasoncameron.dev', YOL = 'yeralti-oyunu/oyuncular';
+  const BASLANGIC = '2026-10';   // aylık sayım bu aydan itibaren tutuluyor
+  const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const fmt = n => n.toLocaleString('tr-TR');
+
+  function ayListesi() {
+    const simdi = new Date(), [y0, m0] = BASLANGIC.split('-').map(Number), liste = [];
+    for (let y = y0, m = m0; y < simdi.getFullYear() || (y === simdi.getFullYear() && m <= simdi.getMonth() + 1); m === 12 ? (y++, m = 1) : m++)
+      liste.push({ anahtar: `${y}-${String(m).padStart(2, '0')}`, ad: AYLAR[m - 1], kisa: AYLAR[m - 1].slice(0, 3), yil: y });
+    return liste;
+  }
+
+  // sayaç hiç arttırılmadıysa servis 404 verir: o ay 0 kişi demektir
+  function oku(yol) {
+    return fetch(`${API}/get/${yol}`).then(r => {
+      if (r.status === 404) return 0;
+      if (!r.ok) throw new Error(r.status);
+      return r.json().then(d => (typeof d.value === 'number' ? d.value : 0));
+    });
+  }
+
+  function grafikCiz(aylar) {
+    const svg = document.getElementById('grafik'), ipucu = document.getElementById('ipucu');
+    const W = 700, H = 260, sol = 36, alt = 34, ust = 20, sag = 8;
+    const enCok = Math.max(1, ...aylar.map(a => a.sayi));
+    const adim = Math.pow(10, Math.floor(Math.log10(enCok))), tepe = Math.ceil(enCok / adim) * adim || 1;
+    const genis = (W - sol - sag) / aylar.length, barG = Math.min(48, genis * 0.6);
+    const yy = v => ust + (H - ust - alt) * (1 - v / tepe);
+    let s = '';
+    for (let i = 0; i <= 4; i++) {
+      const v = tepe * i / 4, y = yy(v);
+      s += `<line x1="${sol}" x2="${W - sag}" y1="${y}" y2="${y}" stroke="var(--grid)" />`;
+      s += `<text x="${sol - 6}" y="${y + 4}" text-anchor="end">${fmt(Math.round(v))}</text>`;
+    }
+    aylar.forEach((a, i) => {
+      const x = sol + genis * i + (genis - barG) / 2, y = yy(a.sayi), h = H - alt - y, r = Math.min(4, h);
+      // sadece üst köşeler yuvarlak, alt kenar tabana oturur
+      if (h > 0) s += `<path class="bar" data-i="${i}" d="M${x},${H - alt} V${y + r} Q${x},${y} ${x + r},${y} H${x + barG - r} Q${x + barG},${y} ${x + barG},${y + r} V${H - alt} Z" />`;
+      s += `<rect data-i="${i}" x="${sol + genis * i}" y="${ust}" width="${genis}" height="${H - ust - alt}" fill="transparent" />`;
+      const etiket = aylar.length > 8 ? a.kisa : a.ad;
+      const yilGoster = i === 0 || a.kisa === 'Oca';
+      s += `<text x="${x + barG / 2}" y="${H - alt + 16}" text-anchor="middle">${etiket}</text>`;
+      if (yilGoster) s += `<text x="${x + barG / 2}" y="${H - alt + 29}" text-anchor="middle">${a.yil}</text>`;
+    });
+    // en yüksek ay ve bu ayın değeri barın üstüne yazılır, gerisi üzerine gelince görünür
+    const enIyi = aylar.reduce((b, a, i) => (a.sayi > aylar[b].sayi ? i : b), 0);
+    new Set([enIyi, aylar.length - 1]).forEach(i => {
+      const x = sol + genis * i + genis / 2;
+      s += `<text class="deger-yazi" x="${x}" y="${yy(aylar[i].sayi) - 6}" text-anchor="middle">${fmt(aylar[i].sayi)}</text>`;
+    });
+    s += `<line x1="${sol}" x2="${W - sag}" y1="${H - alt}" y2="${H - alt}" stroke="var(--muted)" />`;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = s;
+
+    const goster = e => {
+      const i = e.target.dataset && e.target.dataset.i;
+      svg.querySelectorAll('.bar').forEach(b => b.classList.toggle('on', b.dataset.i === i));
+      if (i === undefined) { ipucu.style.opacity = 0; return; }
+      const a = aylar[i], kutu = svg.getBoundingClientRect(), k = kutu.width / W;
+      ipucu.innerHTML = `${a.ad} ${a.yil}: <b>${fmt(a.sayi)}</b> oyuncu`;
+      ipucu.style.left = Math.min(kutu.width - 70, Math.max(70, (sol + genis * i + genis / 2) * k)) + 'px';
+      ipucu.style.top = (yy(a.sayi) * k - 8) + 'px';
+      ipucu.style.opacity = 1;
+    };
+    svg.onmousemove = goster;
+    svg.onclick = goster;   // telefonda dokununca
+    svg.onmouseleave = () => { ipucu.style.opacity = 0; svg.querySelectorAll('.bar').forEach(b => b.classList.remove('on')); };
+  }
+
+  function tabloCiz(aylar) {
+    const son = aylar.length - 1;
+    document.getElementById('tablo').innerHTML = aylar.map((a, i) => {
+      let fark = '<span class="yok">—</span>';
+      if (i > 0) {
+        const d = a.sayi - aylar[i - 1].sayi;
+        fark = d > 0 ? `<span class="up">▲ ${fmt(d)}</span>` : d < 0 ? `<span class="down">▼ ${fmt(-d)}</span>` : '<span class="yok">0</span>';
+      }
+      const rozet = i === son ? '<span class="rozet">devam ediyor</span>' : '';
+      return `<tr><td>${a.ad} ${a.yil}${rozet}</td><td class="n">${fmt(a.sayi)}</td><td class="n">${fark}</td></tr>`;
+    }).reverse().join('');   // en yeni ay en üstte
+  }
+
+  async function yukle() {
+    const durum = document.getElementById('durum');
+    try {
+      const aylar = ayListesi();
+      const [toplam, ...sayilar] = await Promise.all([oku(YOL), ...aylar.map(a => oku(`${YOL}-${a.anahtar}`))]);
+      aylar.forEach((a, i) => { a.sayi = sayilar[i]; });
+      const son = aylar[aylar.length - 1], onceki = aylar[aylar.length - 2];
+      const enIyi = aylar.reduce((b, a) => (a.sayi > b.sayi ? a : b), aylar[0]);
+      document.getElementById('toplam').textContent = fmt(toplam);
+      document.getElementById('buAy').textContent = fmt(son.sayi);
+      document.getElementById('gecenAy').textContent = onceki ? fmt(onceki.sayi) : '—';
+      document.getElementById('enIyi').textContent = enIyi.sayi ? `${enIyi.ad} ${enIyi.yil}` : '—';
+      grafikCiz(aylar);
+      tabloCiz(aylar);
+      durum.className = 'durum';
+      durum.textContent = `Son güncelleme: ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })} · her dakika yenilenir`;
+    } catch (e) {
+      durum.className = 'durum hata';
+      durum.textContent = 'Sayılar alınamadı. İnternet bağlantını kontrol et.';
+    }
+  }
+
+  yukle();
+  setInterval(yukle, 60000);
+
+  // ---- uygulama olarak yükleme ----
+  // servis çalışanı sadece istatistik sayfasını kapsar, oyunun kendisine dokunmaz
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('istatistik-sw.js', { scope: './istatistik' }).catch(() => {});
+  const uygulamada = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  let yuklemeIstegi = null;
+  const yukleDugme = document.getElementById('yukleDugme');
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); yuklemeIstegi = e; yukleDugme.hidden = false; });
+  yukleDugme.onclick = () => {
+    if (!yuklemeIstegi) return;
+    yuklemeIstegi.prompt();
+    yuklemeIstegi.userChoice.finally(() => { yuklemeIstegi = null; yukleDugme.hidden = true; });
+  };
+  addEventListener('appinstalled', () => { yukleDugme.hidden = true; });
+  // iPhone'da yükleme düğmesi olmaz: nasıl ekleneceği yazılır
+  if (!uygulamada && /iphone|ipad|ipod/i.test(navigator.userAgent)) document.getElementById('iosIpucu').style.display = 'block';
+</script>
+</body>
+</html>
