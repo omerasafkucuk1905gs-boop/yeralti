@@ -15,4 +15,5 @@ window.SINEMA_LISTESI = [
   { ad: 'YERALTI - Ön İzleme 4', dosya: 'YERALTI_4_On_Izleme.mp4' },
   { ad: 'YERALTI - Ön İzleme 5', dosya: 'YERALTI_5_On_Izleme.mp4' },
   { ad: 'YERALTI - Ön İzleme 6', dosya: 'YERALTI_6_On_Izleme.mp4' },
+  { ad: 'YERALTI - Ön İzleme 7', dosya: 'YERALTI_7_On_Izleme.mp4' },
 ];
