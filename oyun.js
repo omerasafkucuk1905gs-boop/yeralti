@@ -539,7 +539,11 @@ const CAPITALS = CAPITAL_DATA.map(([country, city, lat, lon]) => ({
   places: LANDMARKS[city] || [`${city} Ulusal Müzesi`, `${city} Şehir Meydanı`, `${country} Meclis Binası`],
 }));
 function capitalByKey(k) { return CAPITALS.find(c => c.key === k) || null; }
-function curCapital() { return capitalByKey(game.capital) || CAPITALS[0]; }
+function curCapital() { // Türkiye'de bir ili geziyorsak o il (başkent sahnesi il için kullanılır)
+  if (dim === 'capital' && game && game.ilKey) { const c = ilCapital(game.ilKey); if (c) return c; }
+  return capitalByKey(game.capital) || CAPITALS[0];
+}
+function travelPlace(k) { return capitalByKey(k) || ilCapital(k); } // uçuş haritası: başkent ya da il
 // hızlı tren için tam Merkür zırhı gerekir (başkent eşyalarının sırası demirci bölümünde)
 const CAPITAL_INDEX = new Map(CAPITALS.map((c, i) => [c.key, i])); // başkentin sıradaki yeri (Ankara 1.)
 function hasFastTrain() { return SLOTS.every(s => game.armor[s.key] >= FIRST_PLANET_TIER); }
@@ -6819,7 +6823,7 @@ function fastTravel(to) {
   if (game.robotOn || player.mount || player.inSub !== null || player.inRocket !== null || train) { showMsg('Önce bindiğin şeyden in.'); return; }
   if (to === 'earth' && dim === 'over') { showMsg('Zaten Dünya\'dasın. Haritadan bir başkent seç.'); return; }
   if (to !== 'earth' && !capitalByKey(to)) return;
-  if (to !== 'earth' && dim === 'capital' && to === game.capital) { showMsg('Zaten bu şehirdesin.'); return; }
+  if (to !== 'earth' && dim === 'capital' && to === game.capital && !game.ilKey) { showMsg('Zaten bu şehirdesin.'); return; }
   const price = plane ? PLANE_PRICE : TRAIN_PRICE;
   let paid = price;
   if (game.money < price) {
@@ -6832,7 +6836,7 @@ function fastTravel(to) {
   overlay = null;
   city.bubble = null;
   const time = plane ? PLANE_TIME : TRAIN_TIME;
-  fastRide = { to, from: dim === 'capital' && game.capital ? game.capital : 'earth', t: time, total: time, mode: plane ? 'plane' : 'train' };
+  fastRide = { to, from: dim === 'capital' ? game.ilKey || game.capital || 'earth' : 'earth', t: time, total: time, mode: plane ? 'plane' : 'train' };
   if (plane) game.stats.flights = (game.stats.flights || 0) + 1;
   travelMode = 'train';
   showMsg(paid ? `Bilet: ${paid} TL. İyi yolculuklar!` : 'Paran yetmedi, eve dönüş bileti hediye!');
@@ -6844,7 +6848,18 @@ function updateFastRide(dt) {
   if (fastRide.t > 0) return;
   const to = fastRide.to, mode = fastRide.mode;
   fastRide = null;
-  if (to === 'earth') {
+  game.ilKey = null; // ilden ayrıldık (yeni ile uçuyorsak aşağıda yeniden konur)
+  if (String(to).startsWith('il:')) { // Türkiye turu: ile paraşütle inilir
+    const cap = ilCapital(to);
+    if (!cap) return;
+    game.ilKey = to;
+    worlds.capital = generateDim('capital');
+    enterDim('capital');
+    player.x = 22 * TILE + (TILE - player.w) / 2;
+    player.y = 2 * TILE;
+    parachute = true;
+    landInIl(cap.ilIndex);
+  } else if (to === 'earth') {
     enterDim('over');
     if (mode === 'plane') { // uçak köyün yanına iner
       const home = makePlayer();
@@ -6917,7 +6932,7 @@ function nearPlace() {
   for (let i = 0; i < cap.places.length && i < CAP_PLACE_COLS.length; i++) if (Math.abs(c - CAP_PLACE_COLS[i]) <= 3) return i;
   return -1;
 }
-function nearForge() { return dim === 'capital' && feetRow() < CAP_SURFACE && Math.abs(centerCol() - CAP_FORGE_COL) <= 2; }
+function nearForge() { return dim === 'capital' && !game.ilKey && feetRow() < CAP_SURFACE && Math.abs(centerCol() - CAP_FORGE_COL) <= 2; }
 function nearCapAirport() { return dim === 'capital' && feetRow() < CAP_SURFACE && Math.abs(centerCol() - CAP_AIRPORT_COL) <= 2; }
 function visitPlace(i) {
   const cap = curCapital(), name = cap.places[i], key = `${cap.key}|${i}`;
@@ -6933,6 +6948,16 @@ function visitPlace(i) {
 function placeStyle(name, cap) {
   const n = trLower(name);
   const has = (...k) => k.some(s => n.includes(s));
+  if (cap.il) { // Türkiye illeri: yemekler ve hayvanlar heykel olur, doğa yerleri doğa
+    if (has('anıtkabir')) return 'temple';
+    if (has('kebab', 'çay', 'baklava', 'künefe', 'dondurma', 'tantuni', 'köfte', 'mantı', 'lokum', 'kaymak', 'peynir', 'kaşar', 'fındık', 'fıstık', 'kayısı', 'elma', 'üzüm',
+      'incir', 'zeytin', 'patates', 'sarımsak', 'leblebi', 'pestil', 'köme', 'pişmaniye', 'macun', 'boyoz', 'çorba', 'hamsi', 'karpuz', 'ekmek', 'tava', 'büryan', 'höşmerim',
+      'kedi', 'köpe', 'horoz', 'lale', 'gül', 'safran', 'halı', 'çini', 'battaniye', 'lületaşı', 'balon', 'petrol', 'kömür', 'güreş', 'türkü', 'paraşüt', 'gondol', 'balık')) return 'emoji';
+    if (has('göl', 'dağ', 'vadi', 'yayla', 'orman', 'plaj', 'koy', 'sahil', 'ada', 'traverten', 'mağara', 'baraj', 'kaplıca', 'ırmak', 'kızılırmak', 'krater', 'peri', 'longoz', 'kuzey ucu', 'milli park')) return 'nature';
+    if (has('göbeklitepe', 'harabe', 'hattuşa', 'heykeller')) return 'arena';
+    if (has('truva', 'vapur', 'neşet')) return 'emoji';
+    if (has('şehitli')) return 'monument';
+  }
   if (has('piramit')) return 'pyramid';
   if (has('cami', 'mescid')) return 'mosque';
   if (has('köprü')) return 'bridge';
@@ -7094,9 +7119,13 @@ function drawCapitalScene() {
     ctx.fillStyle = '#4fc3f7'; for (let k = 0; k < CAP_HST_COL - 3; k++) ctx.fillRect(TILE + 16 + k * TILE, g - 34, 20, 9);
     capSign(hx, g - 120, 'HIZLI TREN · E: dünya haritası', '#ffb300', g);
   }
-  // demirci
+  // demirci (ilde onun yerine dev plaka tabelası)
   const fx = CAP_FORGE_COL * TILE + TILE / 2;
-  if (seen(fx)) {
+  if (cap.il && seen(fx)) {
+    ctx.fillStyle = '#78909c'; ctx.fillRect(fx - 56, g - 70, 6, 70); ctx.fillRect(fx + 50, g - 70, 6, 70);
+    drawPlate(fx - 80, g - 110, 160, cap.plate, cap.city.toLocaleUpperCase('tr-TR').slice(0, 9), true);
+    capSign(fx, g - 150, `${cap.plate} ${cap.city} · Hoş geldin!`, '#ef5350', g - 110);
+  } else if (seen(fx)) {
     ctx.fillStyle = '#4a4a4a'; ctx.fillRect(fx + 14, g - 14, 22, 6); ctx.fillRect(fx + 20, g - 8, 10, 8);
     ctx.fillStyle = '#ff7043'; ctx.fillRect(fx - 40, g - 22, 18, 22);
     ctx.fillStyle = `rgba(255,${150 + Math.floor(Math.sin(performance.now() / 150) * 60)},0,0.9)`; ctx.fillRect(fx - 36, g - 18, 10, 8);
@@ -7116,7 +7145,7 @@ function drawCapitalScene() {
     if (i >= CAP_PLACE_COLS.length) return;
     const x = CAP_PLACE_COLS[i] * TILE + TILE / 2;
     if (!seen(x)) return;
-    const top = drawLandmark(placeStyle(name, cap), x, g, cap.color);
+    const st = placeStyle(name, cap), top = st === 'emoji' ? drawIlStatue(x, g, cap) : drawLandmark(st, x, g, cap.color);
     const done = game.visitedPlaces[`${cap.key}|${i}`];
     capSign(x, top - 34, `${done ? '✓ ' : ''}${name}`, done ? '#a5d6a7' : '#fff59d', top);
   });
@@ -7130,7 +7159,7 @@ function drawCapitalScene() {
     ctx.fillStyle = '#263238'; ctx.fillRect(ax + 28, g - 104, 24, 14);
     ctx.fillStyle = '#eceff1'; roundRect(ax - 50, g - 70, 70, 14, 7); ctx.fill(); // çatıdaki uçak
     ctx.fillStyle = '#e53935'; ctx.fillRect(ax - 50, g - 82, 8, 12);
-    capSign(ax, g - 130, `HAVALİMANI · E: uç (${PLANE_PRICE} TL)`, '#81d4fa', g - 104);
+    capSign(ax, g - 130, cap.il ? 'HAVALİMANI · E: başka ile uç' : `HAVALİMANI · E: uç (${PLANE_PRICE} TL)`, '#81d4fa', g - 104);
   }
   // kazı alanı: çit ve tabela
   const dx0 = CAP_DIG_FROM * TILE, dx1 = (CAP_DIG_TO + 1) * TILE;
@@ -7224,6 +7253,12 @@ function axeColor() { const c = cityGearCap('axe'); return c ? c.color : MATS[ga
 function gainCityOre(x, y) {
   const cap = curCapital();
   const n = Math.random() < luckChance() ? 2 : 1;
+  if (cap.il) { // ilin taşı hatıra olarak satılır (demirci başkentlerde)
+    earn(25 * n);
+    floaters.push({ x, y: y - 8, text: `+${n} ${cap.ore} · +${25 * n} TL`, color: cap.color, t: 1.2 });
+    gainXp(4); beep(900, 0.1, 'triangle', 0.05, 300);
+    return;
+  }
   game.cityOre[cap.key] = (game.cityOre[cap.key] || 0) + n;
   floaters.push({ x, y: y - 8, text: `+${n} ${cap.ore}`, color: cap.color, t: 1.2 });
   gainXp(4);
@@ -7458,8 +7493,8 @@ function drawWorldMap() {
 function drawFastRide() {
   const total = fastRide.total || TRAIN_TIME, plane = fastRide.mode === 'plane';
   const k = Math.max(0, Math.min(1, 1 - fastRide.t / total)), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-  const from = fastRide.from === 'earth' ? EARTH_HOME : capitalByKey(fastRide.from) || EARTH_HOME;
-  const to = fastRide.to === 'earth' ? EARTH_HOME : capitalByKey(fastRide.to) || EARTH_HOME;
+  const from = fastRide.from === 'earth' ? EARTH_HOME : travelPlace(fastRide.from) || EARTH_HOME;
+  const to = fastRide.to === 'earth' ? EARTH_HOME : travelPlace(fastRide.to) || EARTH_HOME;
   const rect = { x: 0, y: 0, w: VIEW_W, h: VIEW_H };
   const P = drawMapBase(rect, { lon: 0, lat: 10, z: 1 }); // bütün dünya ekrana sığar
   const [x0, y0] = P(from.lon, from.lat), [x1, y1] = P(to.lon, to.lat);
@@ -13205,7 +13240,7 @@ function drawPickTeam() {
 
 // ===================== Hayvanat bahçesi, sera, akvaryum, liman, havalimanı =====================
 // 3B şehirdeki binaların içi (ESC ile şehre dönülür)
-const CITY_OVERLAYS = new Set(['airport', 'turkiye','zoo', 'greenhouse', 'trade', 'cinema', 'home', 'tea', 'factory', 'weather', 'sculpt', 'telescope', 'race', 'olympics', 'daha17', 'marathon', 'planerace', 'detective', 'spy']);
+const CITY_OVERLAYS = new Set(['airport', 'zoo', 'greenhouse', 'trade', 'cinema', 'home', 'tea', 'factory', 'weather', 'sculpt', 'telescope', 'race', 'olympics', 'daha17', 'marathon', 'planerace', 'detective', 'spy']);
 function updateCity3dClock(dt) {
   city.t += dt;
   city.planeT += dt;
@@ -13469,7 +13504,6 @@ function cityRoom(w, h, title, color, bg) {
 }
 function drawCityOverlay() {
   if (overlay === 'airport') drawAirport();
-  else if (overlay === 'turkiye') drawTurkiye();
   else if (overlay === 'zoo') drawZoo();
   else if (overlay === 'greenhouse') drawGreenhouse();
   else if (overlay === 'trade') drawTrade();
@@ -13577,20 +13611,59 @@ const TR_OUTLINE = [[26.0, 41.95], [28.0, 41.95], [29.1, 41.25], [31.0, 41.1], [
   [42.8, 41.6], [43.5, 41.1], [43.7, 40.7], [44.8, 39.7], [44.3, 39.4], [44.4, 38.4], [44.3, 37.4], [42.4, 37.1], [41.0, 37.1], [40.0, 36.85], [38.2, 36.9], [37.0, 36.65], [36.6, 36.8],
   [36.6, 36.2], [36.3, 35.8], [35.9, 35.9], [35.8, 36.6], [34.6, 36.8], [33.9, 36.3], [32.5, 36.1], [31.5, 36.7], [30.6, 36.6], [30.4, 36.2], [29.6, 36.2], [28.5, 36.6], [27.4, 37.0],
   [27.2, 37.9], [26.3, 38.3], [26.7, 38.9], [26.1, 39.5], [26.2, 40.0], [26.7, 40.4], [26.2, 40.6], [26.0, 40.8]];
-const trUI = { sel: -1, tab: 'map', fly: 0, visit: -1 };
+const trUI = { sel: -1, tab: 'map' };
+// il, başkent sahnesinde gezilir: meşhur şeyleri sokakta yan yana dizilir (en çok 4), yanına çarşı ve meydan
+const IL_CAPS = new Map();
+function ilCapital(k) {
+  if (!String(k).startsWith('il:')) return null;
+  if (IL_CAPS.has(k)) return IL_CAPS.get(k);
+  const i = ILLER.findIndex(il => il.no === k.slice(3)), il = ILLER[i];
+  if (!il) return null;
+  const places = il.famous.split(':')[0].split(/, | ve /).map(s => s.trim()).filter(Boolean).map(s => s[0].toLocaleUpperCase('tr-TR') + s.slice(1));
+  for (const extra of [`${il.name} Çarşısı`, `${il.name} Kent Meydanı`]) if (places.length < 4) places.push(extra);
+  const c = { key: k, il: true, ilIndex: i, plate: il.no, icon: il.icon, country: 'Türkiye', city: il.name, lat: il.lat, lon: il.lon,
+    ore: `${il.name} Taşı`, color: hslHex(strHash(il.name) % 360, 0.75, 0.58), places: places.slice(0, 4) };
+  IL_CAPS.set(k, c);
+  return c;
+}
+// yöresel şeylerin heykeli: taş kaide üstünde kocaman simge
+const IL_STATUE_ICONS = [['gondol', '🛶'], ['hamsi', '🐟'], ['balık', '🐟'], ['kebab', '🍢'], ['köfte', '🍢'], ['büryan', '🍖'], ['çay', '🫖'], ['baklava', '🍯'], ['fıstık', '🥜'],
+  ['fındık', '🌰'], ['kedi', '🐈'], ['köpe', '🐕'], ['horoz', '🐓'], ['truva', '🐴'], ['vapur', '🚢'], ['kömür', '⛏️'], ['balon', '🎈'], ['lale', '🌷'], ['gül', '🌹'],
+  ['kayısı', '🍑'], ['elma', '🍎'], ['üzüm', '🍇'], ['zeytin', '🫒'], ['incir', '🫒'], ['dondurma', '🍦'], ['peynir', '🧀'], ['kaşar', '🧀'], ['karpuz', '🍉'], ['patates', '🥔'],
+  ['sarımsak', '🧄'], ['mantı', '🥟'], ['halı', '🧶'], ['çini', '🏺'], ['petrol', '🛢️'], ['güreş', '🤼'], ['türkü', '🎵'], ['neşet', '🎵'], ['paraşüt', '🪂'], ['safran', '🌼']];
+function drawIlStatue(x, g, cap) {
+  const n = trLower(cap.places.find((p, i) => CAP_PLACE_COLS[i] * TILE + TILE / 2 === x) || '');
+  const hit = IL_STATUE_ICONS.find(([w]) => n.includes(w)), icon = hit ? hit[1] : cap.icon;
+  ctx.fillStyle = '#cfd8dc'; ctx.fillRect(x - 40, g - 34, 80, 34);
+  ctx.fillStyle = '#90a4ae'; ctx.fillRect(x - 46, g - 40, 92, 8); ctx.fillRect(x - 44, g - 6, 88, 6);
+  ctx.fillStyle = cap.color; ctx.fillRect(x - 24, g - 26, 48, 14);
+  const bob = Math.sin(performance.now() / 600 + x) * 2;
+  text(icon, x, g - 52 + bob, '76px system-ui, sans-serif', '#fff', 'center');
+  return g - 130;
+}
 function ensurePlates() { if (!game.plates) game.plates = {}; return game.plates; }
 function plateCount() { return Object.keys(ensurePlates()).length; }
-function openTurkiye() { ensurePlates(); trUI.tab = 'map'; trUI.fly = 0; trUI.visit = -1; overlay = 'turkiye'; beep(660, 0.1, 'triangle', 0.05); }
+function openTurkiye() { ensurePlates(); trUI.tab = 'map'; if (game.ilKey && trUI.sel < 0) trUI.sel = ilCapital(game.ilKey).ilIndex; overlay = 'turkiye'; beep(660, 0.1, 'triangle', 0.05); }
+function closeTurkiye() { overlay = dim === 'capital' ? null : 'airport'; } // 3B şehirden açıldıysa havalimanına döner
+// başkentlere uçar gibi: harita üstünde uçak, sonra ile paraşütle inilir (updateFastRide)
 function flyToIl(i) {
+  const key = 'il:' + ILLER[i].no;
+  if (game.robotOn || player.mount || player.inSub !== null || player.inRocket !== null || train) { showMsg('Önce bindiğin şeyden in.'); return; }
+  if (dim === 'capital' && game.ilKey === key) { showMsg('Zaten bu ildesin.'); return; }
   if (!pay(IL_PRICE, 'İç hat')) return;
-  trUI.fly = 2.2; trUI.visit = i; game.stats.flights = (game.stats.flights || 0) + 1;
-  beep(300, 0.6, 'sawtooth', 0.03, 600);
+  closeTextAsk(); overlay = null; city.bubble = null;
+  fastRide = { to: key, from: dim === 'capital' ? game.ilKey || game.capital || 'earth' : 'earth', t: PLANE_TIME, total: PLANE_TIME, mode: 'plane' };
+  game.stats.flights = (game.stats.flights || 0) + 1;
+  showMsg(`Bilet: ${IL_PRICE} TL. ${ILLER[i].name} uçağı kalkıyor!`);
+  beep(200, 1.2, 'sawtooth', 0.04, 600);
 }
 function landInIl(i) {
   const il = ILLER[i], P = ensurePlates(), first = !P[il.no];
   P[il.no] = true;
+  newsLog(`Madencimiz uçakla ${il.name} gezisine çıktı.`);
+  snapPhoto(`${il.name} · ${il.no}`);
+  showMsg(`${il.icon} ${il.name.toLocaleUpperCase('tr-TR')}! Paraşütle iniyorsun.${first ? ` 🚘 ${il.no} plakası koleksiyonunda (${plateCount()}/81)!` : ''} Sokakta gez: ${il.famous}. Kazı alanında ${il.name} Taşı kaz. Dönüş: sağdaki havalimanı.`);
   if (first) {
-    showMsg(`🚘 ${il.no} ${il.name.toLocaleUpperCase('tr-TR')} plakası koleksiyonuna eklendi! (${plateCount()}/81)`);
     happySound();
     if (plateCount() === 81) newsLog(`${profile.name || 'Madencimiz'} Türkiye'nin 81 ilinin hepsini gezdi!`);
   }
@@ -13616,35 +13689,20 @@ function drawPlate(x, y, w, no, label, got) { // Türk plakası: solda mavi TR �
   text(s, x + w * 0.56, y + h * 0.5 + fs * 0.36, `bold ${fs}px ui-monospace, monospace`, '#111', 'center');
 }
 function drawTurkiye() {
-  const { x, y } = cityRoom(920, 500, 'İÇ HATLAR · 81 İL TÜRKİYE TURU', '#ef5350', '#0d1b2a');
-  const P = ensurePlates(), n = plateCount();
-  // uçuş: kısa bir uçak animasyonu, sonra ilin kartı
-  if (trUI.fly > 0) {
-    trUI.fly -= 1 / 60;
-    const k = 1 - trUI.fly / 2.2, il = ILLER[trUI.visit];
-    ctx.fillStyle = '#4fc3f7'; ctx.fillRect(x + 20, y + 52, 880, 420);
-    for (let c = 0; c < 6; c++) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.ellipse(x + 20 + ((c * 190 - k * 900) % 880 + 880) % 880, y + 120 + (c % 3) * 110, 60, 18, 0, 0, Math.PI * 2); ctx.fill(); }
-    text('✈️', x + 460, y + 270, '80px system-ui, sans-serif', '#fff', 'center');
-    text(`Uçuş: ${il.name}`, x + 460, y + 360, 'bold 24px system-ui, sans-serif', '#0d47a1', 'center');
-    if (trUI.fly <= 0) { trUI.tab = 'il'; landInIl(trUI.visit); }
-    return;
-  }
+  // tam ekran (3B şehirde de, ildeyken de açılır)
+  const w = 920, h = 500, x = (VIEW_W - w) / 2, y = (VIEW_H - h) / 2;
+  ctx.fillStyle = '#081420'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  button(0, 0, VIEW_W, VIEW_H, () => {});
+  ctx.fillStyle = '#0d1b2a'; roundRect(x, y, w, h, 14); ctx.fill(); ctx.strokeStyle = '#ef5350'; ctx.lineWidth = 3; ctx.stroke();
+  text('İÇ HATLAR · 81 İL TÜRKİYE TURU', x + 24, y + 36, 'bold 22px system-ui, sans-serif', '#ef5350');
+  text(`Paran: ${game.money} TL`, x + w - 54, y + 34, 'bold 14px system-ui, sans-serif', '#ffd54f', 'right');
+  closeButton(x + w - 44, y + 14, closeTurkiye);
+  const P = ensurePlates(), n = plateCount(), backLabel = dim === 'capital' ? '◀ KAPAT' : '◀ HAVALİMANI';
   [['map', '🗺 HARİTA'], ['plates', `🚘 PLAKALARIM ${n}/81`]].forEach(([id, l], i) => uiButton(x + 20 + i * 190, y + 50, 180, 30, l, () => { trUI.tab = id; }, { bg: trUI.tab === id ? '#c62828' : '#37474f', font: 'bold 13px system-ui, sans-serif' }));
   text(game.president ? '🇹🇷 CUMHURBAŞKANI' : game.town.mayor ? '🏛 Belediye başkanı · 81 plaka = Cumhurbaşkanı' : '81 plaka + belediye başkanlığı = Cumhurbaşkanı', x + 900, y + 70, 'bold 13px system-ui, sans-serif', game.president ? '#ffd54f' : '#b0bec5', 'right');
-  if (trUI.tab === 'il' && ILLER[trUI.visit]) { // ilin kartpostalı
-    const il = ILLER[trUI.visit];
-    const g = ctx.createLinearGradient(0, y + 92, 0, y + 470); g.addColorStop(0, '#ffcc80'); g.addColorStop(1, '#ef6c00');
-    ctx.fillStyle = g; roundRect(x + 120, y + 92, 680, 340, 16); ctx.fill();
-    text(`HOŞ GELDİN: ${il.name.toLocaleUpperCase('tr-TR')}`, x + 460, y + 134, 'bold 30px Georgia, serif', '#fff', 'center');
-    text(il.icon, x + 460, y + 250, '96px system-ui, sans-serif', '#fff', 'center');
-    wrapText(il.famous, 'bold 20px system-ui, sans-serif', 600).forEach((l, k) => text(l, x + 460, y + 300 + k * 26, 'bold 20px system-ui, sans-serif', '#3e2723', 'center'));
-    drawPlate(x + 360, y + 352, 200, il.no, il.name.toLocaleUpperCase('tr-TR').slice(0, 9), true);
-    uiButton(x + 330, y + 440, 260, 36, '◀ HARİTAYA DÖN', () => { trUI.tab = 'map'; }, { bg: '#c62828', font: 'bold 14px system-ui, sans-serif' });
-    return;
-  }
   if (trUI.tab === 'plates') { // 81 plakalık koleksiyon
     ILLER.forEach((il, i) => drawPlate(x + 24 + (i % 9) * 98, y + 96 + Math.floor(i / 9) * 40, 92, il.no, il.name.toLocaleUpperCase('tr-TR').slice(0, 7), !!P[il.no]));
-    uiButton(x + 20, y + 458, 200, 30, '◀ HAVALİMANI', () => { overlay = 'airport'; }, { bg: '#37474f' });
+    uiButton(x + 20, y + 458, 200, 30, backLabel, closeTurkiye, { bg: '#37474f' });
     return;
   }
   // Türkiye haritası: gezilen iller yeşil, seçili il sarı
@@ -13678,10 +13736,12 @@ function drawTurkiye() {
     text(il.icon, rx + 120, y + 160, '56px system-ui, sans-serif', '#fff', 'center');
     text(il.name, rx + 120, y + 200, 'bold 24px system-ui, sans-serif', '#fff', 'center');
     drawPlate(rx + 30, y + 214, 180, il.no, il.name.toLocaleUpperCase('tr-TR').slice(0, 9), !!P[il.no]);
-    wrapText(P[il.no] ? il.famous : 'Meşhur şeyini görmek için uç!', '13px system-ui, sans-serif', 240).slice(0, 3).forEach((l, k) => text(l, rx + 120, y + 282 + k * 18, '13px system-ui, sans-serif', '#ffe0b2', 'center'));
-    uiButton(rx, y + 344, 240, 40, `✈ UÇ · ${IL_PRICE} TL`, () => flyToIl(trUI.sel), { bg: '#c62828', font: 'bold 13px system-ui, sans-serif' });
+    wrapText(il.famous, '13px system-ui, sans-serif', 240).slice(0, 3).forEach((l, k) => text(l, rx + 120, y + 282 + k * 18, '13px system-ui, sans-serif', '#ffe0b2', 'center'));
+    const here = dim === 'capital' && game.ilKey === 'il:' + il.no;
+    uiButton(rx, y + 344, 240, 40, here ? 'ŞU AN BURADASIN' : `✈ UÇ · ${IL_PRICE} TL`, () => flyToIl(trUI.sel), { bg: here ? '#455a64' : '#c62828', font: 'bold 13px system-ui, sans-serif' });
   }
-  uiButton(x + 20, y + 458, 200, 30, '◀ HAVALİMANI', () => { overlay = 'airport'; }, { bg: '#37474f' });
+  uiButton(x + 20, y + 458, 200, 30, backLabel, closeTurkiye, { bg: '#37474f' });
+  if (dim === 'capital') uiButton(x + 230, y + 458, 200, 30, `🏡 KÖYE UÇ · ${PLANE_PRICE} TL`, () => { travelMode = 'plane'; fastTravel('earth'); }, { bg: '#1565c0', font: 'bold 12px system-ui, sans-serif' });
   text(`Plakaların: ${n}/81`, x + 900, y + 478, 'bold 14px system-ui, sans-serif', '#ffd54f', 'right');
   if (n >= 81 && game.town.mayor && !game.president) checkPresident();
 }
@@ -16250,7 +16310,7 @@ function interact() {
     return;
   }
   if (nearForge()) { overlay = 'cityforge'; beep(520, 0.08, 'triangle', 0.05); return; }
-  if (nearCapAirport()) { openWorldMap('plane'); return; } // başkent havalimanı: köye ya da başka başkente uç
+  if (nearCapAirport()) { if (game.ilKey) openTurkiye(); else openWorldMap('plane'); return; } // başkent havalimanı: köye ya da başka başkente uç (ildeysek başka ile)
   const place = nearPlace();
   if (place >= 0) { visitPlace(place); return; }
   // portal, yanında rastgele dolaşan at ya da koyundan önce gelir
@@ -16619,7 +16679,7 @@ function updateOverlay() {
   }
   if (CITY_OVERLAYS.has(overlay)) { // şehirdeki binaların içi: ESC şehre döner
     updateCity3dClock(1 / 60);
-    if (pressed.has('Escape')) { if (overlay === 'cinema') leaveCinema(); overlay = overlay === 'turkiye' ? 'airport' : 'city3d'; return; }
+    if (pressed.has('Escape')) { if (overlay === 'cinema') leaveCinema(); overlay = 'city3d'; return; }
     if (overlay === 'airport' && (pressed.has('KeyE') || pressed.has('Enter'))) openWorldMap('plane');
     if (overlay === 'cinema') updateCinema(1 / 60);
     if (overlay === 'home') updateHome();
@@ -16707,6 +16767,8 @@ function updateOverlay() {
     if (pressed.has('Escape')) overlay = 'league';
   } else if (overlay === 'settings') {
     if (pressed.has('Escape')) overlay = null;
+  } else if (overlay === 'turkiye') {
+    if (pressed.has('Escape')) closeTurkiye();
   } else if (overlay === 'ending') {
     if (pressed.has('Escape') && ending) { if (ending.phase === 'end') finishEnding(); else endingNext(); }
   } else if (overlay === 'phone') {
@@ -19612,7 +19674,7 @@ function drawHUD() {
     text(`${PLANETS[dim].name.toUpperCase()} · ${lift}`, 22, 82, 'bold 13px system-ui, sans-serif', DIMS[dim].label);
   } else if (dim === 'capital') {
     const cap = curCapital();
-    text(fitText(`${cap.city.toUpperCase()} · ${cap.ore}: ${game.cityOre[cap.key] || 0}`, 'bold 13px system-ui, sans-serif', 276), 22, 82, 'bold 13px system-ui, sans-serif', cap.color);
+    text(fitText(cap.il ? `${cap.plate} ${cap.city.toLocaleUpperCase('tr-TR')} · plakalar ${plateCount()}/81` : `${cap.city.toUpperCase()} · ${cap.ore}: ${game.cityOre[cap.key] || 0}`, 'bold 13px system-ui, sans-serif', 276), 22, 82, 'bold 13px system-ui, sans-serif', cap.color);
   } else if (dim !== 'over') {
     const bossInfo = !BOSSES[dim] ? (dim === 'future' ? `araba parçası ${game.inv.carPart}/${CAR_PARTS_NEEDED}` : 'huzurlu diyar') : game.bossDefeated[dim] ? 'boss yenildi' : 'boss sağ uçta →';
     const year = dim === 'past' || dim === 'future' ? ` · YIL ${game.timeYear || ''}` : '';
@@ -20049,7 +20111,7 @@ function drawHint() {
   else if (onFoot && nearCredits()) hint = 'E: Yapımcının levhası (oyunun hikâyesi)';
   else if (onFoot && atFastStation()) hint = dim === 'capital' ? `E: HIZLI TREN · eve dönüş ${TRAIN_PRICE} TL (2 dk)` : hasFastTrain() ? `E: HIZLI TREN · ${TRAIN_PRICE} TL, 2 dk` : `Hızlı tren: tam Merkür zırhı lazım (eksik: ${missingMercury()})`;
   else if (onFoot && nearForge()) hint = `E: ${curCapital().city} demircisi (zırh, kazma, balta)`;
-  else if (onFoot && nearCapAirport()) hint = `E: Havalimanı · köye ya da başka başkente uç (${PLANE_PRICE} TL, ${PLANE_TIME} sn)`;
+  else if (onFoot && nearCapAirport()) hint = game.ilKey ? `E: Havalimanı · başka ile ya da köye uç` : `E: Havalimanı · köye ya da başka başkente uç (${PLANE_PRICE} TL, ${PLANE_TIME} sn)`;
   else if (onFoot && nearPlace() >= 0) {
     const cap = curCapital(), i = nearPlace();
     hint = game.visitedPlaces[`${cap.key}|${i}`] ? `${cap.places[i]} (gezildi)` : `E: Gez · ${cap.places[i]}`;
@@ -21005,6 +21067,7 @@ function render() {
     else if (overlay === 'coach') drawCoach();
     else if (overlay === 'settings') drawSettings();
     else if (overlay === 'ending') drawEnding();
+    else if (overlay === 'turkiye') drawTurkiye();
     else if (overlay === 'skills') drawSkills();
     else if (overlay === 'museum') drawMuseum();
     else if (overlay === 'teleport') drawTeleport();
